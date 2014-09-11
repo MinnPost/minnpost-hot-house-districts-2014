@@ -18,6 +18,24 @@ body .node-unpublished {
     padding-top: 1em;
   }
 
+  .districts-nav {
+    margin-bottom: 2em;
+    text-align: center;
+
+    ul li,
+    ul li + li {
+      padding: 0;
+      margin: 0 3px 3px 0;
+
+      a {
+        color: #FFFFFF;
+
+        &.active {
+        }
+      }
+    }
+  }
+
 
   // Custom breakpoints
   @media screen and (max-width: 768px) {

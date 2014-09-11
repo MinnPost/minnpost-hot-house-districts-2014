@@ -25,6 +25,7 @@ require.config({
     'ractive': '../bower_components/ractive/ractive-legacy',
     'ractive-events-tap': '../bower_components/ractive-events-tap/ractive-events-tap',
     'leaflet': '../bower_components/leaflet/dist/leaflet-src',
+    'chroma': '../bower_components/chroma-js/chroma',
     'mpConfig': '../bower_components/minnpost-styles/dist/minnpost-styles.config',
     'mpFormatters': '../bower_components/minnpost-styles/dist/minnpost-styles.formatters',
     'mpMaps': '../bower_components/minnpost-styles/dist/minnpost-styles.maps',

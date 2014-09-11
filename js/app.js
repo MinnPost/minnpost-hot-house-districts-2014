@@ -7,15 +7,17 @@
 
 // Create main application
 define('minnpost-hot-house-districts-2014', [
-  'jquery', 'underscore', 'ractive', 'ractive-events-tap', 'leaflet',
+  'jquery', 'underscore', 'ractive', 'ractive-events-tap', 'leaflet', 'chroma',
   'mpConfig', 'mpFormatters', 'mpMaps', 'mpNav',
   'helpers',
-  'text!templates/application.mustache'
+  'text!templates/application.mustache',
+  'text!../data/districts.json'
 ], function(
-  $, _, Ractive, RactiveEventsTap, L,
+  $, _, Ractive, RactiveEventsTap, L, chroma,
   mpConfig, mpFormatters, mpMaps, mpNav,
   helpers,
-  tApplication
+  tApplication,
+  dDistricts
   ) {
   'use strict';
 
@@ -33,78 +35,54 @@ define('minnpost-hot-house-districts-2014', [
     // Start function
     start: function() {
       var thisApp = this;
+      var prop;
 
+      // Color range
+      this.cRange = chroma.scale([
+        mpConfig['colors-political'].dfl,
+        mpConfig['colors-political'].r
+      ]).mode('hsl').domain([-10, 10], 9);
+
+      // Transform our data.  The data comes in with a keyed object with
+      // the title of the spreadsheet and we don't want to maintain it
+      this.districts = JSON.parse(dDistricts);
+      _.each(this.districts, function(d, di) {
+        prop = di;
+      });
+      this.districts = this.districts[prop];
+      this.districts = _.map(this.districts, function(d, di) {
+        d.pvi = (d.pvi) ? parseFloat(d.pvi) : 0;
+        d.pviColor = thisApp.cRange(d.pvi);
+        return d;
+      });
 
       // Create main application view
       this.mainView = new Ractive({
         el: this.$el,
         template: tApplication,
         data: {
+          districts: this.districts
+
         },
         partials: {
+
         }
       });
 
-
-
-      // Run examples.  Please remove for real application.
-      //
-      // Because of how Ractive initializes and how Highcharts work
-      // there is an inconsitency of when the container for the chart
-      // is ready and when highcharts loads the chart.  So, we put a bit of
-      // of a pause.
-      //
-      // In production, intializing a chart should be tied to data which
-      // can be used with a Ractive observer.
-      //
-      // This should not happen with underscore templates.
-      _.delay(function() { thisApp.makeExamples(); }, 400);
-
-    },
-
-
-    // Make some example depending on what parts were asked for in the
-    // templating process.  Remove, rename, or alter this.
-    makeExamples: function() {
-
-
-
-
-
-      var markerMap = mpMaps.makeLeafletMap('example-markers-features-map');
-      var tooltipControl = new mpMaps.TooltipControl();
-      markerMap.setZoom(9);
-      markerMap.addControl(tooltipControl);
-
-      // Markers
-      var iconCinema = mpMaps.makeMakiIcon('cinema', 'm');
-      var iconBlank = mpMaps.makeMakiIcon('', 's', '222222');
-      L.marker(mpMaps.minneapolisPoint, { icon: iconCinema })
-        .addTo(markerMap).bindPopup('Minneapolis', {
-          closeButton: false
+      // Delay to ensure that the DOM from the view is totally loaded
+      _.delay(function() {
+        // Scroll spy
+        thisApp.$el.mpScrollSpy();
+        // Stick the navigation
+        thisApp.$('.districts-nav').mpStick({
+          container: thisApp.$('.districts-nav').parent()
         });
-      L.marker(mpMaps.stPaulPoint, { icon: iconBlank })
-        .addTo(markerMap).bindPopup('St. Paul', {
-          closeButton: false
-        });
+      }, 500);
 
-      // GeoJSON example
-      $.getJSON('//boundaries.minnpost.com/1.0/boundary/27-county-2010/?callback=?', function(data) {
-        if (data.simple_shape) {
-          L.geoJson(data.simple_shape, {
-            style: mpMaps.mapStyle,
-            onEachFeature: function(feature, layer) {
-              layer.on('mouseover', function(e) {
-                tooltipControl.update('Hennepin County');
-              });
-              layer.on('mouseout', function(e) {
-                tooltipControl.hide();
-              });
-            }
-          }).addTo(markerMap);
-        }
+      // Events
+      this.mainView.on('selectDistrict', function(e) {
+        e.original.preventDefault();
       });
-
     },
 
 
@@ -115,7 +93,6 @@ define('minnpost-hot-house-districts-2014', [
       el: '.minnpost-hot-house-districts-2014-container',
       availablePaths: {
         local: {
-
           css: ['.tmp/css/main.css'],
           images: 'images/',
           data: 'data/'
@@ -135,13 +112,9 @@ define('minnpost-hot-house-districts-2014', [
         },
         deploy: {
           css: [
-            '//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css',
-            '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.libs.min.css',
-            '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.latest.min.css'
+            '//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css',  '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.libs.min.css',  '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.latest.min.css'
           ],
-          ie: [
-            '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.libs.min.ie.css',
-            '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.latest.min.ie.css'
+          ie: [  '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.libs.min.ie.css',  '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.latest.min.ie.css'
           ],
           images: '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/images/',
           data: '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/data/'

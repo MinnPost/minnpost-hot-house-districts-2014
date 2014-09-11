@@ -40,7 +40,7 @@ Get the code for this project and install the necessary dependency libraries and
 
 Data is stored in a [Google Spreadsheet](https://docs.google.com/a/minnpost.com/spreadsheets/d/1WBBkJmIVAS7YYy3W8CnlICI55QJfaWrt27R_EiBl7Vk/).  Run the following to update the data locally:
 
-`grunt data`
+1. `grunt data`
 
 ### Running locally
 

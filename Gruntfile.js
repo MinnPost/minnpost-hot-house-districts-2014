@@ -60,7 +60,7 @@ module.exports = function(grunt) {
       files: ['Gruntfile.js', 'js/**/*.js', 'data-processing/**/*.js']
     },
 
-    
+
     // Compass is an extended SASS.  Set it up so that it generates to .tmp/
     compass: {
       options: {
@@ -89,7 +89,7 @@ module.exports = function(grunt) {
         }
       }
     },
-    
+
 
     // Copy relevant files over to distribution
     copy: {
@@ -185,7 +185,7 @@ module.exports = function(grunt) {
       // CSS
       css: {
         src: [
-          
+
           '<%= compass.dist.options.cssDir %>/main.css'
         ],
         dest: 'dist/<%= pkg.name %>.<%= pkg.version %>.css'
@@ -329,6 +329,15 @@ module.exports = function(grunt) {
     watch: {
       files: ['<%= jshint.files %>', 'styles/*.scss'],
       tasks: 'watcher'
+    },
+
+    // Get data from Google Spreadsheets
+    gss_pull: {
+      districts: {
+        files: {
+          'data/districts.json' : ['1WBBkJmIVAS7YYy3W8CnlICI55QJfaWrt27R_EiBl7Vk']
+        },
+      },
     }
   });
 
@@ -343,6 +352,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-requirejs');
   grunt.loadNpmTasks('grunt-contrib-cssmin');
   grunt.loadNpmTasks('grunt-browser-sync');
+  grunt.loadNpmTasks('grunt-gss-pull');
   grunt.loadNpmTasks('grunt-s3');
 
   // Custom task to output embed code when deploy is run, if the project is Inline
@@ -358,12 +368,12 @@ module.exports = function(grunt) {
   grunt.registerTask('default', ['jshint', 'compass:dist', 'clean', 'copy', 'requirejs', 'concat', 'cssmin', 'uglify']);
 
   // Watch tasks
-  
   grunt.registerTask('watcher', ['jshint', 'compass:dev']);
   grunt.registerTask('server', ['jshint', 'compass:dev', 'browserSync', 'watch']);
-  
 
   // Deploy tasks
   grunt.registerTask('deploy', ['s3', 'inline_embed:minnpost-hot-house-districts-2014']);
 
+  // Data tasks
+  grunt.registerTask('data', ['gss_pull']);
 };
