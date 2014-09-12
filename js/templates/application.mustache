@@ -5,7 +5,7 @@
     <div class="districts-nav cf">
       {{#districts:gi}}
         <div class="type-group {{ gi }}-districts">
-          <span><img title="{{ typeNames[gi] }}" class="custom-icon" src="{{ paths.images }}/{{ gi }}.png"></span>
+          <span><img title="{{ typeNames[gi] }}" class="custom-icon" src="{{ paths.images }}{{ gi }}.png"></span>
           <ul>
             {{#this:di}}
               <li><a href="#"
@@ -28,7 +28,7 @@
           <div class="district" data-spy-me="district-{{ district }}">
             <h3>
               District {{ district }}
-              <img class="custom-icon" src="{{ paths.images }}/{{ type }}.png">
+              <img class="custom-icon" src="{{ paths.images }}{{ type }}.png">
             </h3>
 
             <div class="row">
