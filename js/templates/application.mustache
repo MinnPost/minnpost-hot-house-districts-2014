@@ -19,6 +19,76 @@
       {{#districts:di}}
         <div class="district" data-spy-me="district-{{ district }}">
           <h3>District {{ district }}</h3>
+
+          <div class="row">
+            <div class="column-medium-50">
+              {{ description }}
+            </div>
+
+            <div class="column-medium-25 details">
+              <div class="candidates">
+                <div>
+                  {{ (incumbentparty === 'R') ? candidater : candidated }}
+                  <span class="label bg-color-political-{{ (incumbentparty === 'R') ? 'r' : 'dfl' }}">{{ (incumbentparty === 'R') ? 'R' : 'DFL' }}</span>
+                  {{#incumbentparty}}
+                    <span title="Incumbent" class="label">I</span>
+                  {{/incumbentparty}}
+                </div>
+                <div>vs.</div>
+                <div>
+                  {{ (incumbentparty === 'R') ? candidated : candidater }}
+                  <span class="label bg-color-political-{{ (incumbentparty === 'R') ? 'dfl' : 'r' }}">{{ (incumbentparty === 'R') ? 'DFL' : 'R' }}</span>
+                </div>
+              </div>
+
+
+              <div class="chart-container">
+                <div>PVI</div>
+                <div class="chart"
+                  title="PVI: {{ pvi < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(pvi), 2) }}">
+                  <div class="mid-tick"></div>
+                  <div class="tick"
+                    style="background-color: {{ pviColor.hex() }}; left: {{ pT(pvi, -10, 10) }}%;">
+                  </div>
+                </div>
+              </div>
+
+              <div class="chart-container">
+                <div>2012</div>
+                <div class="chart"
+                  title="2012 margin: {{ pvi < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(lean), 2) }}">
+                  <div class="mid-tick"></div>
+                  <div class="tick"
+                    style="background-color: {{ pviColor.hex() }}; left: {{ pT(lean, -10, 10) }}%;">
+                  </div>
+                </div>
+              </div>
+
+              <div class="chart-container">
+                <div>Presidential</div>
+                <div class="chart"
+                  title="2012 Presidential lean: {{ pvi < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(leanpres), 2) }}">
+                  <div class="mid-tick"></div>
+                  <div class="tick"
+                    style="background-color: {{ pviColor.hex() }}; left: {{ pT(leanpres, -10, 10) }}%;">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column-medium-25">
+              {{^boundary.simple_shape}}
+                <div class="district-map">
+                  <div class="loading-block"></div>
+                </div>
+              {{/boundary.simple_shape}}
+              {{#boundary.simple_shape}}
+                <div class="district-map"
+                  id="district-map-{{ district }}"
+                  decorator="map:{{ this }}">
+                </div>
+              {{/boundary.simple_shape}}
+            </div>
         </div>
       {{/districts}}
     </div>

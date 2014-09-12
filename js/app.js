@@ -39,12 +39,15 @@ define('minnpost-hot-house-districts-2014', [
 
       // Color range
       this.cRange = chroma.scale([
-        mpConfig['colors-political'].dfl,
+        mpConfig['colors-political'].d,
+        '#FFFFFF',
         mpConfig['colors-political'].r
-      ]).mode('hsl').domain([-10, 10], 9);
+      ]).mode('hsl').domain([-15, 15], 18);
 
       // Transform our data.  The data comes in with a keyed object with
-      // the title of the spreadsheet and we don't want to maintain it
+      // the title of the spreadsheet and we don't want to maintain it.
+      // Also note that Google Spreadsheets alters column names and removes
+      // things like spaces, _, and numbers
       this.districts = JSON.parse(dDistricts);
       _.each(this.districts, function(d, di) {
         prop = di;
@@ -53,36 +56,90 @@ define('minnpost-hot-house-districts-2014', [
       this.districts = _.map(this.districts, function(d, di) {
         d.pvi = (d.pvi) ? parseFloat(d.pvi) : 0;
         d.pviColor = thisApp.cRange(d.pvi);
+        d.pviFGColor = (chroma(d.pviColor).luminance() < 0.5) ? '#FFFFFF' : '#282828';
         return d;
       });
+      this.districts = _.sortBy(this.districts, 'pvi');
 
       // Create main application view
       this.mainView = new Ractive({
         el: this.$el,
         template: tApplication,
         data: {
-          districts: this.districts
-
+          districts: this.districts,
+          f: mpFormatters,
+          pT: this.percentTowards
         },
         partials: {
-
+        },
+        decorators: {
+          map: this.mapDecorator
         }
       });
 
       // Delay to ensure that the DOM from the view is totally loaded
       _.delay(function() {
         // Scroll spy
-        thisApp.$el.mpScrollSpy();
+        thisApp.$el.mpScrollSpy({
+          offset: thisApp.$('.districts-nav').height() + 30,
+          throttle: 100
+        });
         // Stick the navigation
         thisApp.$('.districts-nav').mpStick({
           container: thisApp.$('.districts-nav').parent()
         });
-      }, 500);
+      }, 1000);
 
       // Events
       this.mainView.on('selectDistrict', function(e) {
         e.original.preventDefault();
       });
+
+      // Attach boundary outline to each district
+      this.mainView.observe('districts.*', function(n, o, keypath) {
+        var thisView = this;
+        var current = this.get(keypath + '.boundary');
+
+        if (_.isObject(n) && n.district && !_.isObject(current)) {
+          $.getJSON(thisApp.options.boundaryAPI.replace('[[[ID]]]', n.district.toLowerCase()))
+            .done(function(data) {
+              if (_.isObject(data)) {
+                thisView.set(keypath + '.boundary', data);
+              }
+            });
+        }
+      });
+    },
+
+    // Ractive decorator for making a map
+    mapDecorator: function(node, shape) {
+      var map, layer;
+
+      // Add map
+      map = mpMaps.makeLeafletMap(node);
+      map.removeControl(map.zoomControl);
+      map.addControl(new L.Control.Zoom({ position: 'topright' }));
+      layer = L.geoJson(shape, {
+        style: mpMaps.mapStyle
+      }).addTo(map);
+      map.fitBounds(layer.getBounds(), {
+        padding: [25, 25]
+      });
+      map.invalidateSize();
+
+      return {
+        teardown: function () {
+          if (_.isObject(map)) {
+            map.remove();
+          }
+        }
+      };
+    },
+
+    // Percentage towards
+    percentTowards: function(v, start, end) {
+      var p = (v - start) / (end - start);
+      return Math.min(Math.max(p * 100, 0), 100);
     },
 
 
@@ -91,6 +148,7 @@ define('minnpost-hot-house-districts-2014', [
       projectName: 'minnpost-hot-house-districts-2014',
       remoteProxy: null,
       el: '.minnpost-hot-house-districts-2014-container',
+      boundaryAPI: '//boundaries.minnpost.com/1.0/boundary/[[[ID]]]-state-house-district-2012?callback=?',
       availablePaths: {
         local: {
           css: ['.tmp/css/main.css'],
