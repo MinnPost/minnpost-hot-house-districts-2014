@@ -15,23 +15,45 @@ body .node-unpublished {
     padding-top: 1em;
   }
 
+  img.custom-icon {
+    width: 0.85em;
+    display: inline;
+  }
+
   .districts-nav {
     z-index: 10000;
     margin-bottom: 3em;
-    text-align: center;
 
-    ul li,
-    ul li + li {
-      padding: 0;
-      margin: 0 3px 3px 0;
-      float: none;
-      display: inline-block;
-      vertical-align: top;
+    .type-group {
+      float: left;
+      margin: 0.25em 1em 0.5em 0;
 
-      a {
-        color: #282828;
+      img.custom-icon {
+        width: 1.75em;
+        vertical-align: bottom;
+        padding-right: 0.25em;
+      }
 
-        &.active {
+      ul {
+        @include inline-block();
+        margin: 0;
+        padding: 0;
+
+        li {
+          @include inline-block();
+          padding: 0;
+          margin: 0 3px 3px 0;
+          float: none;
+          vertical-align: middle;
+
+          a {
+            color: #282828;
+            padding: 0.25em 0.5em;
+
+            &.active {
+              font-weight: bold;
+            }
+          }
         }
       }
     }
