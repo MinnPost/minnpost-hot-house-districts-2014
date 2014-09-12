@@ -2,9 +2,6 @@
  * Main styles for: minnpost-hot-house-districts-2014
  */
 
-// Variables
-$space: 1em;
-
 
 // This makes the unpublished background not as annoying
 body .node-unpublished {
@@ -27,6 +24,9 @@ body .node-unpublished {
     ul li + li {
       padding: 0;
       margin: 0 3px 3px 0;
+      float: none;
+      display: inline-block;
+      vertical-align: top;
 
       a {
         color: #282828;

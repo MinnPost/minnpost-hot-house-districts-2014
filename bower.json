@@ -85,16 +85,6 @@
       ],
       "returns": "L"
     },
-    "minnpost-styles": {
-      "rname": "mpStyles",
-      "css": [
-        "//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css",
-        "minnpost-styles/dist/minnpost-styles"
-      ],
-      "sass": [
-        "minnpost-styles/styles/main"
-      ]
-    },
     "chroma-js": {
       "rname": "chroma",
       "js": [

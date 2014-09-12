@@ -1,7 +1,14 @@
 /**
  * Styles for: minnpost-hot-house-districts-2014
  */
-@import "compass";
+
+// Import MinnPost Styles parts
+@import "../bower_components/minnpost-styles/styles/common.scss";
+#{$selector-wrapper} {
+  @import "../bower_components/minnpost-styles/styles/_nav.scss";
+  @import "../bower_components/minnpost-styles/styles/_labels.scss";
+  @import "../bower_components/minnpost-styles/styles/_maps.scss";
+}
 
 @import "_mixins";
 @import "_styles";
