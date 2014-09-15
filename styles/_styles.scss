@@ -2,6 +2,8 @@
  * Main styles for: minnpost-hot-house-districts-2014
  */
 
+$chart-height: 1.25em;
+
 
 // This makes the unpublished background not as annoying
 body .node-unpublished {
@@ -70,45 +72,72 @@ body .node-unpublished {
       }
 
       .district-map {
-        min-height: 17.5em;
+        min-height: 25em;
       }
 
       .details {
         text-align: center;
 
+        .label {
+          border-radius: 2px;
+
+          &.bg-color-political-dfl,
+          &.bg-color-political-d {
+            background-color: nth(nth($colors-political, 1), 2);
+          }
+          &.bg-color-political-r {
+            background-color: nth(nth($colors-political, 3), 2);
+          }
+        }
+
         .candidates {
           margin-bottom: 2em;
+
+          .candidate-name {
+            margin-bottom: .25em;
+          }
+
+          .vs {
+            color: $color-gray;
+            margin-bottom: .25em;
+          }
         }
 
         .chart-container {
-          margin-bottom: 2em;
+          margin-bottom: 1em;
 
           .chart {
             position: relative;
             width: 100%;
-            height: 1em;
-            background-color: #BDBDBD;
+            height: $chart-height;
+            background-color: $color-lighter-gray;
 
             .mid-tick {
               position: absolute;
               top: 0;
               left: 50%;
-              height: 1em;
-              width: 1px;
-              background-color: #777777;
+              height: $chart-height;
+              width: 2px;
+              background-color: $color-dark-gray;
             }
 
             .tick {
               position: absolute;
               top: 0;
               left: 10%;
-              height: 1em;
+              height: $chart-height;
               width: 10px;
-              background-color: #777777;
+              background-color: $color-gray;
+              border: 1px solid $color-dark-gray;
             }
           }
         }
       }
+    }
+
+    .description-container,
+    .details-container {
+      padding-right: 1em;
     }
   }
 

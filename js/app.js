@@ -91,11 +91,12 @@ define('minnpost-hot-house-districts-2014', [
         // Scroll spy
         thisApp.$el.mpScrollSpy({
           offset: thisApp.$('.districts-nav').height() + 30,
-          throttle: 100
+          throttle: 50
         });
         // Stick the navigation
         thisApp.$('.districts-nav').mpStick({
-          container: thisApp.$('.districts-nav').parent()
+          container: thisApp.$('.districts-nav').parent(),
+          throttle: 50
         });
       }, 1000);
 
@@ -194,7 +195,12 @@ define('minnpost-hot-house-districts-2014', [
       this.determinePaths();
       this.getLocalAssests(function(map) {
         this.renderAssests(map);
-        this.start();
+        // A slight delay/hack so that the CSS can be loaded.  There is an onload
+        // event, but that is just when the DOM element is created, not when
+        // the CSS has been applied
+        _.delay(_.bind(function() {
+          this.start();
+        }, this), 500);
       });
     },
 
