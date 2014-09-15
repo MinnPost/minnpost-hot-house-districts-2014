@@ -74,7 +74,7 @@
                       <div class="chart-container">
                         <div class="component-label">2012</div>
                         <div class="chart"
-                          title="2012 margin: {{ pvi < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(lean2012), 2) }}">
+                          title="2012 margin: {{ lean2012 < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(lean2012), 2) }}">
                           <div class="mid-tick"></div>
                           <div class="tick"
                             style="background-color: {{ cR(lean2012).hex() }}; left: {{ pT(lean2012, -10, 10) }}%;">
@@ -85,10 +85,10 @@
                       <div class="chart-container">
                         <div class="component-label">Presidential</div>
                         <div class="chart"
-                          title="2012 Presidential lean: {{ pvi < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(leanpres), 2) }}">
+                          title="2012 Presidential lean: {{ leanpres < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(leanpres), 2) }}">
                           <div class="mid-tick"></div>
                           <div class="tick"
-                            style="background-color: {{ pviColor.hex() }}; left: {{ pT(leanpres, -10, 10) }}%;">
+                            style="background-color: {{ cR(leanpres).hex() }}; left: {{ pT(leanpres, -10, 10) }}%;">
                           </div>
                         </div>
                       </div>
@@ -120,14 +120,15 @@
 
   <div class="footnote-container">
     <div class="footnote">
-      <p>Some code, techniques, and data on <a href="https://github.com/minnpost/minnpost-hot-house-districts-2014" target="_blank">Github</a>.</p>
+      <p>
+        Some icons from the Noun Project
+        including <a target="_blank" href="http://thenounproject.com/term/radar/793/">radar</a> by Paul te Kortschot,
+        <a target="_blank" href="http://thenounproject.com/term/eye/19791/">eye</a>
+        and <a target="_blank" href="http://thenounproject.com/term/blind/19790/">blind</a> by Michael Rowe.
+        Some code, techniques, and data on <a href="https://github.com/minnpost/minnpost-hot-house-districts-2014" target="_blank">Github</a>.
+      </p>
 
       <p>Some map data © OpenStreetMap contributors; licensed under the <a href="http://www.openstreetmap.org/copyright" target="_blank">Open Data Commons Open Database License</a>.  Some map design © MapBox; licensed according to the <a href="http://mapbox.com/tos/" target="_blank">MapBox Terms of Service</a>.</p>
-
-      <p>
-        http://thenounproject.com/term/radar/793/
-        http://thenounproject.com/term/eye/19791/
-        http://thenounproject.com/term/blind/19790/
     </div>
   </div>
 </div>
