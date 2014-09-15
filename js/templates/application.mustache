@@ -74,10 +74,10 @@
                       <div class="chart-container">
                         <div class="component-label">2012</div>
                         <div class="chart"
-                          title="2012 margin: {{ pvi < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(lean), 2) }}">
+                          title="2012 margin: {{ pvi < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(lean2012), 2) }}">
                           <div class="mid-tick"></div>
                           <div class="tick"
-                            style="background-color: {{ pviColor.hex() }}; left: {{ pT(lean, -10, 10) }}%;">
+                            style="background-color: {{ cR(lean2012).hex() }}; left: {{ pT(lean2012, -10, 10) }}%;">
                           </div>
                         </div>
                       </div>

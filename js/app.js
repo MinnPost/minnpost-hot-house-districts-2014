@@ -47,7 +47,7 @@ define('minnpost-hot-house-districts-2014', [
       // Transform our data.  The data comes in with a keyed object with
       // the title of the spreadsheet and we don't want to maintain it.
       // Also note that Google Spreadsheets alters column names and removes
-      // things like spaces, _, and numbers
+      // things like spaces and _
       this.districts = JSON.parse(dDistricts);
       _.each(this.districts, function(d, di) {
         prop = di;
@@ -55,13 +55,16 @@ define('minnpost-hot-house-districts-2014', [
       this.districts = this.districts[prop];
       this.districts = _.map(this.districts, function(d, di) {
         d.pvi = (d.pvi) ? parseFloat(d.pvi) : 0;
+        d.lean = (d.lean2012) ? parseFloat(d.lean2012) : 0;
         d.pviColor = thisApp.cRange(d.pvi);
         d.pviFGColor = (chroma(d.pviColor).luminance() < 0.5) ? '#FFFFFF' : '#282828';
         return d;
       });
+      // Sort
       this.districts = _.sortBy(this.districts, function(d, di) {
         return ((d.type === 'watch') ?  -9999 : ((d.type === 'radar') ? 0 : 9999)) + d.pvi;
       });
+      // Group
       this.districts = _.groupBy(this.districts, 'type');
 
       // Create main application view
@@ -70,6 +73,7 @@ define('minnpost-hot-house-districts-2014', [
         template: tApplication,
         data: {
           districts: this.districts,
+          cR: this.cRange,
           f: mpFormatters,
           pT: this.percentTowards,
           paths: this.options.paths,
