@@ -42,7 +42,7 @@ define('minnpost-hot-house-districts-2014', [
         mpConfig['colors-political'].d,
         '#FFFFFF',
         mpConfig['colors-political'].r
-      ]).mode('hsl').domain([-15, 15], 18);
+      ]).mode('hsl').domain([-10, 10]);
 
       // Transform our data.  The data comes in with a keyed object with
       // the title of the spreadsheet and we don't want to maintain it.
@@ -56,6 +56,7 @@ define('minnpost-hot-house-districts-2014', [
       this.districts = _.map(this.districts, function(d, di) {
         d.pvi = (d.pvi) ? parseFloat(d.pvi) : 0;
         d.lean = (d.lean2012) ? parseFloat(d.lean2012) : 0;
+        d.lean = (d.leanpres) ? parseFloat(d.leanpres) : 0;
         d.pviColor = thisApp.cRange(d.pvi);
         d.pviFGColor = (chroma(d.pviColor).luminance() < 0.5) ? '#FFFFFF' : '#282828';
         return d;
