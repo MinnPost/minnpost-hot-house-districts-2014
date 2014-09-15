@@ -2182,36 +2182,57 @@ body .node-unpublished {
   color: #282828;
 }
 .mp .minnpost-hot-house-districts-2014-container .districts .district .district-map {
-  min-height: 17.5em;
+  min-height: 25em;
 }
 .mp .minnpost-hot-house-districts-2014-container .districts .district .details {
   text-align: center;
 }
+.mp .minnpost-hot-house-districts-2014-container .districts .district .details .label {
+  border-radius: 2px;
+}
+.mp .minnpost-hot-house-districts-2014-container .districts .district .details .label.bg-color-political-dfl, .mp .minnpost-hot-house-districts-2014-container .districts .district .details .label.bg-color-political-d {
+  background-color: #0793ab;
+}
+.mp .minnpost-hot-house-districts-2014-container .districts .district .details .label.bg-color-political-r {
+  background-color: #a1000f;
+}
 .mp .minnpost-hot-house-districts-2014-container .districts .district .details .candidates {
   margin-bottom: 2em;
 }
+.mp .minnpost-hot-house-districts-2014-container .districts .district .details .candidates .candidate-name {
+  margin-bottom: .25em;
+}
+.mp .minnpost-hot-house-districts-2014-container .districts .district .details .candidates .vs {
+  color: #7a7a7a;
+  margin-bottom: .25em;
+}
 .mp .minnpost-hot-house-districts-2014-container .districts .district .details .chart-container {
-  margin-bottom: 2em;
+  margin-bottom: 1em;
 }
 .mp .minnpost-hot-house-districts-2014-container .districts .district .details .chart-container .chart {
   position: relative;
   width: 100%;
-  height: 1em;
-  background-color: #BDBDBD;
+  height: 1.25em;
+  background-color: #cccccc;
 }
 .mp .minnpost-hot-house-districts-2014-container .districts .district .details .chart-container .chart .mid-tick {
   position: absolute;
   top: 0;
   left: 50%;
-  height: 1em;
-  width: 1px;
-  background-color: #777777;
+  height: 1.25em;
+  width: 2px;
+  background-color: #7a7a7a;
 }
 .mp .minnpost-hot-house-districts-2014-container .districts .district .details .chart-container .chart .tick {
   position: absolute;
   top: 0;
   left: 10%;
-  height: 1em;
+  height: 1.25em;
   width: 10px;
-  background-color: #777777;
+  background-color: #7a7a7a;
+  border: 1px solid #282828;
+}
+.mp .minnpost-hot-house-districts-2014-container .districts .description-container,
+.mp .minnpost-hot-house-districts-2014-container .districts .details-container {
+  padding-right: 1em;
 }
