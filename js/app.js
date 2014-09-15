@@ -63,7 +63,7 @@ define('minnpost-hot-house-districts-2014', [
       });
       // Sort
       this.districts = _.sortBy(this.districts, function(d, di) {
-        return ((d.type === 'watch') ?  -9999 : ((d.type === 'radar') ? 0 : 9999)) + d.pvi;
+        return ((d.type === 'watch') ?  -9999 : ((d.type === 'radar') ? 0 : 9999)) + parseInt(d.district, 10);
       });
       // Group
       this.districts = _.groupBy(this.districts, 'type');
@@ -95,7 +95,7 @@ define('minnpost-hot-house-districts-2014', [
       _.delay(function() {
         // Scroll spy
         thisApp.$el.mpScrollSpy({
-          offset: thisApp.$('.districts-nav').height() + 30,
+          offset: thisApp.$('.districts-nav').height() + ($(window).height() / 12),
           throttle: 50
         });
         // Stick the navigation
