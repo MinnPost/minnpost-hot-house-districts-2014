@@ -2,6 +2,12 @@
   <div class="message-container"></div>
 
   <div class="content-container">
+    {{^districts}}
+      <div class="loading-container">
+        <i class="loading"></i> Loading...
+      </div> 
+    {{/districts}}
+
     <div class="districts-nav cf">
       <ul class="cf">
         {{#districts:gi}}

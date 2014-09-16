@@ -95,19 +95,6 @@ define('minnpost-hot-house-districts-2014', [
         }
       });
 
-      // Scroll spy
-      thisApp.spy = thisApp.$el.mpScrollSpy({
-        offset: thisApp.$('.districts-nav').height() + ($(window).height() / 12),
-        throttle: 50,
-        gotoEvent: false,
-        gotoPreventDefault: false
-      });
-      // Stick the navigation
-      thisApp.$('.districts-nav').mpStick({
-        container: thisApp.$('.districts-nav').parent(),
-        throttle: 50
-      });
-
       // Attach boundary outline to each district
       this.mainView.observe('districts.*.*', function(n, o, keypath) {
         var thisView = this;
@@ -123,8 +110,40 @@ define('minnpost-hot-house-districts-2014', [
         }
       });
 
+      // Observe has a dom deferal
+      this.mainView.observe('districts', function(n, o) {
+        if (!_.isUndefined(n)) {
+          thisApp.domReady();
+        }
+      }, { defer: true });
+    },
+
+    // Dom is loaded (I think)
+    domReady: function() {
+      var thisApp = this;
+
+      if (this.isDomReady === true) {
+        return;
+      }
+
+      // Scroll spy
+      this.spy = this.$el.mpScrollSpy({
+        offset: this.$('.districts-nav').height() + ($(window).height() / 12),
+        throttle: 50,
+        gotoEvent: false,
+        gotoPreventDefault: false,
+        gotoSpeed: 1000
+      });
+      // Stick the navigation
+      this.$('.districts-nav').mpStick({
+        container: thisApp.$('.districts-nav').parent(),
+        throttle: 50
+      });
+
       // Start routing
       Backbone.history.start();
+
+      this.isDomReady = true;
     },
 
     // Handle going to specific district
@@ -160,7 +179,7 @@ define('minnpost-hot-house-districts-2014', [
     // Percentage towards
     percentTowards: function(v, start, end) {
       var p = (v - start) / (end - start);
-      return Math.min(Math.max(p * 100, 0), 97.5);
+      return Math.min(Math.max(p * 100, 0), 97);
     },
 
 
@@ -211,7 +230,7 @@ define('minnpost-hot-house-districts-2014', [
         // the CSS has been applied
         _.delay(_.bind(function() {
           this.start();
-        }, this), 500);
+        }, this), 1000);
       });
     },
 
