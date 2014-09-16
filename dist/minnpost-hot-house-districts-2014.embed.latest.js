@@ -12168,6 +12168,1615 @@ define('jquery-noconflict',['jquery'], function($) {
   }
 }.call(this));
 
+//     Backbone.js 1.1.2
+
+//     (c) 2010-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+//     Backbone may be freely distributed under the MIT license.
+//     For all details and documentation:
+//     http://backbonejs.org
+
+(function(root, factory) {
+
+  // Set up Backbone appropriately for the environment. Start with AMD.
+  if (typeof define === 'function' && define.amd) {
+    define('backbone',['underscore', 'jquery', 'exports'], function(_, $, exports) {
+      // Export global even in AMD case in case this script is loaded with
+      // others that may still expect a global Backbone.
+      root.Backbone = factory(root, exports, _, $);
+    });
+
+  // Next for Node.js or CommonJS. jQuery may not be needed as a module.
+  } else if (typeof exports !== 'undefined') {
+    var _ = require('underscore');
+    factory(root, exports, _);
+
+  // Finally, as a browser global.
+  } else {
+    root.Backbone = factory(root, {}, root._, (root.jQuery || root.Zepto || root.ender || root.$));
+  }
+
+}(this, function(root, Backbone, _, $) {
+
+  // Initial Setup
+  // -------------
+
+  // Save the previous value of the `Backbone` variable, so that it can be
+  // restored later on, if `noConflict` is used.
+  var previousBackbone = root.Backbone;
+
+  // Create local references to array methods we'll want to use later.
+  var array = [];
+  var push = array.push;
+  var slice = array.slice;
+  var splice = array.splice;
+
+  // Current version of the library. Keep in sync with `package.json`.
+  Backbone.VERSION = '1.1.2';
+
+  // For Backbone's purposes, jQuery, Zepto, Ender, or My Library (kidding) owns
+  // the `$` variable.
+  Backbone.$ = $;
+
+  // Runs Backbone.js in *noConflict* mode, returning the `Backbone` variable
+  // to its previous owner. Returns a reference to this Backbone object.
+  Backbone.noConflict = function() {
+    root.Backbone = previousBackbone;
+    return this;
+  };
+
+  // Turn on `emulateHTTP` to support legacy HTTP servers. Setting this option
+  // will fake `"PATCH"`, `"PUT"` and `"DELETE"` requests via the `_method` parameter and
+  // set a `X-Http-Method-Override` header.
+  Backbone.emulateHTTP = false;
+
+  // Turn on `emulateJSON` to support legacy servers that can't deal with direct
+  // `application/json` requests ... will encode the body as
+  // `application/x-www-form-urlencoded` instead and will send the model in a
+  // form param named `model`.
+  Backbone.emulateJSON = false;
+
+  // Backbone.Events
+  // ---------------
+
+  // A module that can be mixed in to *any object* in order to provide it with
+  // custom events. You may bind with `on` or remove with `off` callback
+  // functions to an event; `trigger`-ing an event fires all callbacks in
+  // succession.
+  //
+  //     var object = {};
+  //     _.extend(object, Backbone.Events);
+  //     object.on('expand', function(){ alert('expanded'); });
+  //     object.trigger('expand');
+  //
+  var Events = Backbone.Events = {
+
+    // Bind an event to a `callback` function. Passing `"all"` will bind
+    // the callback to all events fired.
+    on: function(name, callback, context) {
+      if (!eventsApi(this, 'on', name, [callback, context]) || !callback) return this;
+      this._events || (this._events = {});
+      var events = this._events[name] || (this._events[name] = []);
+      events.push({callback: callback, context: context, ctx: context || this});
+      return this;
+    },
+
+    // Bind an event to only be triggered a single time. After the first time
+    // the callback is invoked, it will be removed.
+    once: function(name, callback, context) {
+      if (!eventsApi(this, 'once', name, [callback, context]) || !callback) return this;
+      var self = this;
+      var once = _.once(function() {
+        self.off(name, once);
+        callback.apply(this, arguments);
+      });
+      once._callback = callback;
+      return this.on(name, once, context);
+    },
+
+    // Remove one or many callbacks. If `context` is null, removes all
+    // callbacks with that function. If `callback` is null, removes all
+    // callbacks for the event. If `name` is null, removes all bound
+    // callbacks for all events.
+    off: function(name, callback, context) {
+      var retain, ev, events, names, i, l, j, k;
+      if (!this._events || !eventsApi(this, 'off', name, [callback, context])) return this;
+      if (!name && !callback && !context) {
+        this._events = void 0;
+        return this;
+      }
+      names = name ? [name] : _.keys(this._events);
+      for (i = 0, l = names.length; i < l; i++) {
+        name = names[i];
+        if (events = this._events[name]) {
+          this._events[name] = retain = [];
+          if (callback || context) {
+            for (j = 0, k = events.length; j < k; j++) {
+              ev = events[j];
+              if ((callback && callback !== ev.callback && callback !== ev.callback._callback) ||
+                  (context && context !== ev.context)) {
+                retain.push(ev);
+              }
+            }
+          }
+          if (!retain.length) delete this._events[name];
+        }
+      }
+
+      return this;
+    },
+
+    // Trigger one or many events, firing all bound callbacks. Callbacks are
+    // passed the same arguments as `trigger` is, apart from the event name
+    // (unless you're listening on `"all"`, which will cause your callback to
+    // receive the true name of the event as the first argument).
+    trigger: function(name) {
+      if (!this._events) return this;
+      var args = slice.call(arguments, 1);
+      if (!eventsApi(this, 'trigger', name, args)) return this;
+      var events = this._events[name];
+      var allEvents = this._events.all;
+      if (events) triggerEvents(events, args);
+      if (allEvents) triggerEvents(allEvents, arguments);
+      return this;
+    },
+
+    // Tell this object to stop listening to either specific events ... or
+    // to every object it's currently listening to.
+    stopListening: function(obj, name, callback) {
+      var listeningTo = this._listeningTo;
+      if (!listeningTo) return this;
+      var remove = !name && !callback;
+      if (!callback && typeof name === 'object') callback = this;
+      if (obj) (listeningTo = {})[obj._listenId] = obj;
+      for (var id in listeningTo) {
+        obj = listeningTo[id];
+        obj.off(name, callback, this);
+        if (remove || _.isEmpty(obj._events)) delete this._listeningTo[id];
+      }
+      return this;
+    }
+
+  };
+
+  // Regular expression used to split event strings.
+  var eventSplitter = /\s+/;
+
+  // Implement fancy features of the Events API such as multiple event
+  // names `"change blur"` and jQuery-style event maps `{change: action}`
+  // in terms of the existing API.
+  var eventsApi = function(obj, action, name, rest) {
+    if (!name) return true;
+
+    // Handle event maps.
+    if (typeof name === 'object') {
+      for (var key in name) {
+        obj[action].apply(obj, [key, name[key]].concat(rest));
+      }
+      return false;
+    }
+
+    // Handle space separated event names.
+    if (eventSplitter.test(name)) {
+      var names = name.split(eventSplitter);
+      for (var i = 0, l = names.length; i < l; i++) {
+        obj[action].apply(obj, [names[i]].concat(rest));
+      }
+      return false;
+    }
+
+    return true;
+  };
+
+  // A difficult-to-believe, but optimized internal dispatch function for
+  // triggering events. Tries to keep the usual cases speedy (most internal
+  // Backbone events have 3 arguments).
+  var triggerEvents = function(events, args) {
+    var ev, i = -1, l = events.length, a1 = args[0], a2 = args[1], a3 = args[2];
+    switch (args.length) {
+      case 0: while (++i < l) (ev = events[i]).callback.call(ev.ctx); return;
+      case 1: while (++i < l) (ev = events[i]).callback.call(ev.ctx, a1); return;
+      case 2: while (++i < l) (ev = events[i]).callback.call(ev.ctx, a1, a2); return;
+      case 3: while (++i < l) (ev = events[i]).callback.call(ev.ctx, a1, a2, a3); return;
+      default: while (++i < l) (ev = events[i]).callback.apply(ev.ctx, args); return;
+    }
+  };
+
+  var listenMethods = {listenTo: 'on', listenToOnce: 'once'};
+
+  // Inversion-of-control versions of `on` and `once`. Tell *this* object to
+  // listen to an event in another object ... keeping track of what it's
+  // listening to.
+  _.each(listenMethods, function(implementation, method) {
+    Events[method] = function(obj, name, callback) {
+      var listeningTo = this._listeningTo || (this._listeningTo = {});
+      var id = obj._listenId || (obj._listenId = _.uniqueId('l'));
+      listeningTo[id] = obj;
+      if (!callback && typeof name === 'object') callback = this;
+      obj[implementation](name, callback, this);
+      return this;
+    };
+  });
+
+  // Aliases for backwards compatibility.
+  Events.bind   = Events.on;
+  Events.unbind = Events.off;
+
+  // Allow the `Backbone` object to serve as a global event bus, for folks who
+  // want global "pubsub" in a convenient place.
+  _.extend(Backbone, Events);
+
+  // Backbone.Model
+  // --------------
+
+  // Backbone **Models** are the basic data object in the framework --
+  // frequently representing a row in a table in a database on your server.
+  // A discrete chunk of data and a bunch of useful, related methods for
+  // performing computations and transformations on that data.
+
+  // Create a new model with the specified attributes. A client id (`cid`)
+  // is automatically generated and assigned for you.
+  var Model = Backbone.Model = function(attributes, options) {
+    var attrs = attributes || {};
+    options || (options = {});
+    this.cid = _.uniqueId('c');
+    this.attributes = {};
+    if (options.collection) this.collection = options.collection;
+    if (options.parse) attrs = this.parse(attrs, options) || {};
+    attrs = _.defaults({}, attrs, _.result(this, 'defaults'));
+    this.set(attrs, options);
+    this.changed = {};
+    this.initialize.apply(this, arguments);
+  };
+
+  // Attach all inheritable methods to the Model prototype.
+  _.extend(Model.prototype, Events, {
+
+    // A hash of attributes whose current and previous value differ.
+    changed: null,
+
+    // The value returned during the last failed validation.
+    validationError: null,
+
+    // The default name for the JSON `id` attribute is `"id"`. MongoDB and
+    // CouchDB users may want to set this to `"_id"`.
+    idAttribute: 'id',
+
+    // Initialize is an empty function by default. Override it with your own
+    // initialization logic.
+    initialize: function(){},
+
+    // Return a copy of the model's `attributes` object.
+    toJSON: function(options) {
+      return _.clone(this.attributes);
+    },
+
+    // Proxy `Backbone.sync` by default -- but override this if you need
+    // custom syncing semantics for *this* particular model.
+    sync: function() {
+      return Backbone.sync.apply(this, arguments);
+    },
+
+    // Get the value of an attribute.
+    get: function(attr) {
+      return this.attributes[attr];
+    },
+
+    // Get the HTML-escaped value of an attribute.
+    escape: function(attr) {
+      return _.escape(this.get(attr));
+    },
+
+    // Returns `true` if the attribute contains a value that is not null
+    // or undefined.
+    has: function(attr) {
+      return this.get(attr) != null;
+    },
+
+    // Set a hash of model attributes on the object, firing `"change"`. This is
+    // the core primitive operation of a model, updating the data and notifying
+    // anyone who needs to know about the change in state. The heart of the beast.
+    set: function(key, val, options) {
+      var attr, attrs, unset, changes, silent, changing, prev, current;
+      if (key == null) return this;
+
+      // Handle both `"key", value` and `{key: value}` -style arguments.
+      if (typeof key === 'object') {
+        attrs = key;
+        options = val;
+      } else {
+        (attrs = {})[key] = val;
+      }
+
+      options || (options = {});
+
+      // Run validation.
+      if (!this._validate(attrs, options)) return false;
+
+      // Extract attributes and options.
+      unset           = options.unset;
+      silent          = options.silent;
+      changes         = [];
+      changing        = this._changing;
+      this._changing  = true;
+
+      if (!changing) {
+        this._previousAttributes = _.clone(this.attributes);
+        this.changed = {};
+      }
+      current = this.attributes, prev = this._previousAttributes;
+
+      // Check for changes of `id`.
+      if (this.idAttribute in attrs) this.id = attrs[this.idAttribute];
+
+      // For each `set` attribute, update or delete the current value.
+      for (attr in attrs) {
+        val = attrs[attr];
+        if (!_.isEqual(current[attr], val)) changes.push(attr);
+        if (!_.isEqual(prev[attr], val)) {
+          this.changed[attr] = val;
+        } else {
+          delete this.changed[attr];
+        }
+        unset ? delete current[attr] : current[attr] = val;
+      }
+
+      // Trigger all relevant attribute changes.
+      if (!silent) {
+        if (changes.length) this._pending = options;
+        for (var i = 0, l = changes.length; i < l; i++) {
+          this.trigger('change:' + changes[i], this, current[changes[i]], options);
+        }
+      }
+
+      // You might be wondering why there's a `while` loop here. Changes can
+      // be recursively nested within `"change"` events.
+      if (changing) return this;
+      if (!silent) {
+        while (this._pending) {
+          options = this._pending;
+          this._pending = false;
+          this.trigger('change', this, options);
+        }
+      }
+      this._pending = false;
+      this._changing = false;
+      return this;
+    },
+
+    // Remove an attribute from the model, firing `"change"`. `unset` is a noop
+    // if the attribute doesn't exist.
+    unset: function(attr, options) {
+      return this.set(attr, void 0, _.extend({}, options, {unset: true}));
+    },
+
+    // Clear all attributes on the model, firing `"change"`.
+    clear: function(options) {
+      var attrs = {};
+      for (var key in this.attributes) attrs[key] = void 0;
+      return this.set(attrs, _.extend({}, options, {unset: true}));
+    },
+
+    // Determine if the model has changed since the last `"change"` event.
+    // If you specify an attribute name, determine if that attribute has changed.
+    hasChanged: function(attr) {
+      if (attr == null) return !_.isEmpty(this.changed);
+      return _.has(this.changed, attr);
+    },
+
+    // Return an object containing all the attributes that have changed, or
+    // false if there are no changed attributes. Useful for determining what
+    // parts of a view need to be updated and/or what attributes need to be
+    // persisted to the server. Unset attributes will be set to undefined.
+    // You can also pass an attributes object to diff against the model,
+    // determining if there *would be* a change.
+    changedAttributes: function(diff) {
+      if (!diff) return this.hasChanged() ? _.clone(this.changed) : false;
+      var val, changed = false;
+      var old = this._changing ? this._previousAttributes : this.attributes;
+      for (var attr in diff) {
+        if (_.isEqual(old[attr], (val = diff[attr]))) continue;
+        (changed || (changed = {}))[attr] = val;
+      }
+      return changed;
+    },
+
+    // Get the previous value of an attribute, recorded at the time the last
+    // `"change"` event was fired.
+    previous: function(attr) {
+      if (attr == null || !this._previousAttributes) return null;
+      return this._previousAttributes[attr];
+    },
+
+    // Get all of the attributes of the model at the time of the previous
+    // `"change"` event.
+    previousAttributes: function() {
+      return _.clone(this._previousAttributes);
+    },
+
+    // Fetch the model from the server. If the server's representation of the
+    // model differs from its current attributes, they will be overridden,
+    // triggering a `"change"` event.
+    fetch: function(options) {
+      options = options ? _.clone(options) : {};
+      if (options.parse === void 0) options.parse = true;
+      var model = this;
+      var success = options.success;
+      options.success = function(resp) {
+        if (!model.set(model.parse(resp, options), options)) return false;
+        if (success) success(model, resp, options);
+        model.trigger('sync', model, resp, options);
+      };
+      wrapError(this, options);
+      return this.sync('read', this, options);
+    },
+
+    // Set a hash of model attributes, and sync the model to the server.
+    // If the server returns an attributes hash that differs, the model's
+    // state will be `set` again.
+    save: function(key, val, options) {
+      var attrs, method, xhr, attributes = this.attributes;
+
+      // Handle both `"key", value` and `{key: value}` -style arguments.
+      if (key == null || typeof key === 'object') {
+        attrs = key;
+        options = val;
+      } else {
+        (attrs = {})[key] = val;
+      }
+
+      options = _.extend({validate: true}, options);
+
+      // If we're not waiting and attributes exist, save acts as
+      // `set(attr).save(null, opts)` with validation. Otherwise, check if
+      // the model will be valid when the attributes, if any, are set.
+      if (attrs && !options.wait) {
+        if (!this.set(attrs, options)) return false;
+      } else {
+        if (!this._validate(attrs, options)) return false;
+      }
+
+      // Set temporary attributes if `{wait: true}`.
+      if (attrs && options.wait) {
+        this.attributes = _.extend({}, attributes, attrs);
+      }
+
+      // After a successful server-side save, the client is (optionally)
+      // updated with the server-side state.
+      if (options.parse === void 0) options.parse = true;
+      var model = this;
+      var success = options.success;
+      options.success = function(resp) {
+        // Ensure attributes are restored during synchronous saves.
+        model.attributes = attributes;
+        var serverAttrs = model.parse(resp, options);
+        if (options.wait) serverAttrs = _.extend(attrs || {}, serverAttrs);
+        if (_.isObject(serverAttrs) && !model.set(serverAttrs, options)) {
+          return false;
+        }
+        if (success) success(model, resp, options);
+        model.trigger('sync', model, resp, options);
+      };
+      wrapError(this, options);
+
+      method = this.isNew() ? 'create' : (options.patch ? 'patch' : 'update');
+      if (method === 'patch') options.attrs = attrs;
+      xhr = this.sync(method, this, options);
+
+      // Restore attributes.
+      if (attrs && options.wait) this.attributes = attributes;
+
+      return xhr;
+    },
+
+    // Destroy this model on the server if it was already persisted.
+    // Optimistically removes the model from its collection, if it has one.
+    // If `wait: true` is passed, waits for the server to respond before removal.
+    destroy: function(options) {
+      options = options ? _.clone(options) : {};
+      var model = this;
+      var success = options.success;
+
+      var destroy = function() {
+        model.trigger('destroy', model, model.collection, options);
+      };
+
+      options.success = function(resp) {
+        if (options.wait || model.isNew()) destroy();
+        if (success) success(model, resp, options);
+        if (!model.isNew()) model.trigger('sync', model, resp, options);
+      };
+
+      if (this.isNew()) {
+        options.success();
+        return false;
+      }
+      wrapError(this, options);
+
+      var xhr = this.sync('delete', this, options);
+      if (!options.wait) destroy();
+      return xhr;
+    },
+
+    // Default URL for the model's representation on the server -- if you're
+    // using Backbone's restful methods, override this to change the endpoint
+    // that will be called.
+    url: function() {
+      var base =
+        _.result(this, 'urlRoot') ||
+        _.result(this.collection, 'url') ||
+        urlError();
+      if (this.isNew()) return base;
+      return base.replace(/([^\/])$/, '$1/') + encodeURIComponent(this.id);
+    },
+
+    // **parse** converts a response into the hash of attributes to be `set` on
+    // the model. The default implementation is just to pass the response along.
+    parse: function(resp, options) {
+      return resp;
+    },
+
+    // Create a new model with identical attributes to this one.
+    clone: function() {
+      return new this.constructor(this.attributes);
+    },
+
+    // A model is new if it has never been saved to the server, and lacks an id.
+    isNew: function() {
+      return !this.has(this.idAttribute);
+    },
+
+    // Check if the model is currently in a valid state.
+    isValid: function(options) {
+      return this._validate({}, _.extend(options || {}, { validate: true }));
+    },
+
+    // Run validation against the next complete set of model attributes,
+    // returning `true` if all is well. Otherwise, fire an `"invalid"` event.
+    _validate: function(attrs, options) {
+      if (!options.validate || !this.validate) return true;
+      attrs = _.extend({}, this.attributes, attrs);
+      var error = this.validationError = this.validate(attrs, options) || null;
+      if (!error) return true;
+      this.trigger('invalid', this, error, _.extend(options, {validationError: error}));
+      return false;
+    }
+
+  });
+
+  // Underscore methods that we want to implement on the Model.
+  var modelMethods = ['keys', 'values', 'pairs', 'invert', 'pick', 'omit'];
+
+  // Mix in each Underscore method as a proxy to `Model#attributes`.
+  _.each(modelMethods, function(method) {
+    Model.prototype[method] = function() {
+      var args = slice.call(arguments);
+      args.unshift(this.attributes);
+      return _[method].apply(_, args);
+    };
+  });
+
+  // Backbone.Collection
+  // -------------------
+
+  // If models tend to represent a single row of data, a Backbone Collection is
+  // more analagous to a table full of data ... or a small slice or page of that
+  // table, or a collection of rows that belong together for a particular reason
+  // -- all of the messages in this particular folder, all of the documents
+  // belonging to this particular author, and so on. Collections maintain
+  // indexes of their models, both in order, and for lookup by `id`.
+
+  // Create a new **Collection**, perhaps to contain a specific type of `model`.
+  // If a `comparator` is specified, the Collection will maintain
+  // its models in sort order, as they're added and removed.
+  var Collection = Backbone.Collection = function(models, options) {
+    options || (options = {});
+    if (options.model) this.model = options.model;
+    if (options.comparator !== void 0) this.comparator = options.comparator;
+    this._reset();
+    this.initialize.apply(this, arguments);
+    if (models) this.reset(models, _.extend({silent: true}, options));
+  };
+
+  // Default options for `Collection#set`.
+  var setOptions = {add: true, remove: true, merge: true};
+  var addOptions = {add: true, remove: false};
+
+  // Define the Collection's inheritable methods.
+  _.extend(Collection.prototype, Events, {
+
+    // The default model for a collection is just a **Backbone.Model**.
+    // This should be overridden in most cases.
+    model: Model,
+
+    // Initialize is an empty function by default. Override it with your own
+    // initialization logic.
+    initialize: function(){},
+
+    // The JSON representation of a Collection is an array of the
+    // models' attributes.
+    toJSON: function(options) {
+      return this.map(function(model){ return model.toJSON(options); });
+    },
+
+    // Proxy `Backbone.sync` by default.
+    sync: function() {
+      return Backbone.sync.apply(this, arguments);
+    },
+
+    // Add a model, or list of models to the set.
+    add: function(models, options) {
+      return this.set(models, _.extend({merge: false}, options, addOptions));
+    },
+
+    // Remove a model, or a list of models from the set.
+    remove: function(models, options) {
+      var singular = !_.isArray(models);
+      models = singular ? [models] : _.clone(models);
+      options || (options = {});
+      var i, l, index, model;
+      for (i = 0, l = models.length; i < l; i++) {
+        model = models[i] = this.get(models[i]);
+        if (!model) continue;
+        delete this._byId[model.id];
+        delete this._byId[model.cid];
+        index = this.indexOf(model);
+        this.models.splice(index, 1);
+        this.length--;
+        if (!options.silent) {
+          options.index = index;
+          model.trigger('remove', model, this, options);
+        }
+        this._removeReference(model, options);
+      }
+      return singular ? models[0] : models;
+    },
+
+    // Update a collection by `set`-ing a new list of models, adding new ones,
+    // removing models that are no longer present, and merging models that
+    // already exist in the collection, as necessary. Similar to **Model#set**,
+    // the core operation for updating the data contained by the collection.
+    set: function(models, options) {
+      options = _.defaults({}, options, setOptions);
+      if (options.parse) models = this.parse(models, options);
+      var singular = !_.isArray(models);
+      models = singular ? (models ? [models] : []) : _.clone(models);
+      var i, l, id, model, attrs, existing, sort;
+      var at = options.at;
+      var targetModel = this.model;
+      var sortable = this.comparator && (at == null) && options.sort !== false;
+      var sortAttr = _.isString(this.comparator) ? this.comparator : null;
+      var toAdd = [], toRemove = [], modelMap = {};
+      var add = options.add, merge = options.merge, remove = options.remove;
+      var order = !sortable && add && remove ? [] : false;
+
+      // Turn bare objects into model references, and prevent invalid models
+      // from being added.
+      for (i = 0, l = models.length; i < l; i++) {
+        attrs = models[i] || {};
+        if (attrs instanceof Model) {
+          id = model = attrs;
+        } else {
+          id = attrs[targetModel.prototype.idAttribute || 'id'];
+        }
+
+        // If a duplicate is found, prevent it from being added and
+        // optionally merge it into the existing model.
+        if (existing = this.get(id)) {
+          if (remove) modelMap[existing.cid] = true;
+          if (merge) {
+            attrs = attrs === model ? model.attributes : attrs;
+            if (options.parse) attrs = existing.parse(attrs, options);
+            existing.set(attrs, options);
+            if (sortable && !sort && existing.hasChanged(sortAttr)) sort = true;
+          }
+          models[i] = existing;
+
+        // If this is a new, valid model, push it to the `toAdd` list.
+        } else if (add) {
+          model = models[i] = this._prepareModel(attrs, options);
+          if (!model) continue;
+          toAdd.push(model);
+          this._addReference(model, options);
+        }
+
+        // Do not add multiple models with the same `id`.
+        model = existing || model;
+        if (order && (model.isNew() || !modelMap[model.id])) order.push(model);
+        modelMap[model.id] = true;
+      }
+
+      // Remove nonexistent models if appropriate.
+      if (remove) {
+        for (i = 0, l = this.length; i < l; ++i) {
+          if (!modelMap[(model = this.models[i]).cid]) toRemove.push(model);
+        }
+        if (toRemove.length) this.remove(toRemove, options);
+      }
+
+      // See if sorting is needed, update `length` and splice in new models.
+      if (toAdd.length || (order && order.length)) {
+        if (sortable) sort = true;
+        this.length += toAdd.length;
+        if (at != null) {
+          for (i = 0, l = toAdd.length; i < l; i++) {
+            this.models.splice(at + i, 0, toAdd[i]);
+          }
+        } else {
+          if (order) this.models.length = 0;
+          var orderedModels = order || toAdd;
+          for (i = 0, l = orderedModels.length; i < l; i++) {
+            this.models.push(orderedModels[i]);
+          }
+        }
+      }
+
+      // Silently sort the collection if appropriate.
+      if (sort) this.sort({silent: true});
+
+      // Unless silenced, it's time to fire all appropriate add/sort events.
+      if (!options.silent) {
+        for (i = 0, l = toAdd.length; i < l; i++) {
+          (model = toAdd[i]).trigger('add', model, this, options);
+        }
+        if (sort || (order && order.length)) this.trigger('sort', this, options);
+      }
+
+      // Return the added (or merged) model (or models).
+      return singular ? models[0] : models;
+    },
+
+    // When you have more items than you want to add or remove individually,
+    // you can reset the entire set with a new list of models, without firing
+    // any granular `add` or `remove` events. Fires `reset` when finished.
+    // Useful for bulk operations and optimizations.
+    reset: function(models, options) {
+      options || (options = {});
+      for (var i = 0, l = this.models.length; i < l; i++) {
+        this._removeReference(this.models[i], options);
+      }
+      options.previousModels = this.models;
+      this._reset();
+      models = this.add(models, _.extend({silent: true}, options));
+      if (!options.silent) this.trigger('reset', this, options);
+      return models;
+    },
+
+    // Add a model to the end of the collection.
+    push: function(model, options) {
+      return this.add(model, _.extend({at: this.length}, options));
+    },
+
+    // Remove a model from the end of the collection.
+    pop: function(options) {
+      var model = this.at(this.length - 1);
+      this.remove(model, options);
+      return model;
+    },
+
+    // Add a model to the beginning of the collection.
+    unshift: function(model, options) {
+      return this.add(model, _.extend({at: 0}, options));
+    },
+
+    // Remove a model from the beginning of the collection.
+    shift: function(options) {
+      var model = this.at(0);
+      this.remove(model, options);
+      return model;
+    },
+
+    // Slice out a sub-array of models from the collection.
+    slice: function() {
+      return slice.apply(this.models, arguments);
+    },
+
+    // Get a model from the set by id.
+    get: function(obj) {
+      if (obj == null) return void 0;
+      return this._byId[obj] || this._byId[obj.id] || this._byId[obj.cid];
+    },
+
+    // Get the model at the given index.
+    at: function(index) {
+      return this.models[index];
+    },
+
+    // Return models with matching attributes. Useful for simple cases of
+    // `filter`.
+    where: function(attrs, first) {
+      if (_.isEmpty(attrs)) return first ? void 0 : [];
+      return this[first ? 'find' : 'filter'](function(model) {
+        for (var key in attrs) {
+          if (attrs[key] !== model.get(key)) return false;
+        }
+        return true;
+      });
+    },
+
+    // Return the first model with matching attributes. Useful for simple cases
+    // of `find`.
+    findWhere: function(attrs) {
+      return this.where(attrs, true);
+    },
+
+    // Force the collection to re-sort itself. You don't need to call this under
+    // normal circumstances, as the set will maintain sort order as each item
+    // is added.
+    sort: function(options) {
+      if (!this.comparator) throw new Error('Cannot sort a set without a comparator');
+      options || (options = {});
+
+      // Run sort based on type of `comparator`.
+      if (_.isString(this.comparator) || this.comparator.length === 1) {
+        this.models = this.sortBy(this.comparator, this);
+      } else {
+        this.models.sort(_.bind(this.comparator, this));
+      }
+
+      if (!options.silent) this.trigger('sort', this, options);
+      return this;
+    },
+
+    // Pluck an attribute from each model in the collection.
+    pluck: function(attr) {
+      return _.invoke(this.models, 'get', attr);
+    },
+
+    // Fetch the default set of models for this collection, resetting the
+    // collection when they arrive. If `reset: true` is passed, the response
+    // data will be passed through the `reset` method instead of `set`.
+    fetch: function(options) {
+      options = options ? _.clone(options) : {};
+      if (options.parse === void 0) options.parse = true;
+      var success = options.success;
+      var collection = this;
+      options.success = function(resp) {
+        var method = options.reset ? 'reset' : 'set';
+        collection[method](resp, options);
+        if (success) success(collection, resp, options);
+        collection.trigger('sync', collection, resp, options);
+      };
+      wrapError(this, options);
+      return this.sync('read', this, options);
+    },
+
+    // Create a new instance of a model in this collection. Add the model to the
+    // collection immediately, unless `wait: true` is passed, in which case we
+    // wait for the server to agree.
+    create: function(model, options) {
+      options = options ? _.clone(options) : {};
+      if (!(model = this._prepareModel(model, options))) return false;
+      if (!options.wait) this.add(model, options);
+      var collection = this;
+      var success = options.success;
+      options.success = function(model, resp) {
+        if (options.wait) collection.add(model, options);
+        if (success) success(model, resp, options);
+      };
+      model.save(null, options);
+      return model;
+    },
+
+    // **parse** converts a response into a list of models to be added to the
+    // collection. The default implementation is just to pass it through.
+    parse: function(resp, options) {
+      return resp;
+    },
+
+    // Create a new collection with an identical list of models as this one.
+    clone: function() {
+      return new this.constructor(this.models);
+    },
+
+    // Private method to reset all internal state. Called when the collection
+    // is first initialized or reset.
+    _reset: function() {
+      this.length = 0;
+      this.models = [];
+      this._byId  = {};
+    },
+
+    // Prepare a hash of attributes (or other model) to be added to this
+    // collection.
+    _prepareModel: function(attrs, options) {
+      if (attrs instanceof Model) return attrs;
+      options = options ? _.clone(options) : {};
+      options.collection = this;
+      var model = new this.model(attrs, options);
+      if (!model.validationError) return model;
+      this.trigger('invalid', this, model.validationError, options);
+      return false;
+    },
+
+    // Internal method to create a model's ties to a collection.
+    _addReference: function(model, options) {
+      this._byId[model.cid] = model;
+      if (model.id != null) this._byId[model.id] = model;
+      if (!model.collection) model.collection = this;
+      model.on('all', this._onModelEvent, this);
+    },
+
+    // Internal method to sever a model's ties to a collection.
+    _removeReference: function(model, options) {
+      if (this === model.collection) delete model.collection;
+      model.off('all', this._onModelEvent, this);
+    },
+
+    // Internal method called every time a model in the set fires an event.
+    // Sets need to update their indexes when models change ids. All other
+    // events simply proxy through. "add" and "remove" events that originate
+    // in other collections are ignored.
+    _onModelEvent: function(event, model, collection, options) {
+      if ((event === 'add' || event === 'remove') && collection !== this) return;
+      if (event === 'destroy') this.remove(model, options);
+      if (model && event === 'change:' + model.idAttribute) {
+        delete this._byId[model.previous(model.idAttribute)];
+        if (model.id != null) this._byId[model.id] = model;
+      }
+      this.trigger.apply(this, arguments);
+    }
+
+  });
+
+  // Underscore methods that we want to implement on the Collection.
+  // 90% of the core usefulness of Backbone Collections is actually implemented
+  // right here:
+  var methods = ['forEach', 'each', 'map', 'collect', 'reduce', 'foldl',
+    'inject', 'reduceRight', 'foldr', 'find', 'detect', 'filter', 'select',
+    'reject', 'every', 'all', 'some', 'any', 'include', 'contains', 'invoke',
+    'max', 'min', 'toArray', 'size', 'first', 'head', 'take', 'initial', 'rest',
+    'tail', 'drop', 'last', 'without', 'difference', 'indexOf', 'shuffle',
+    'lastIndexOf', 'isEmpty', 'chain', 'sample'];
+
+  // Mix in each Underscore method as a proxy to `Collection#models`.
+  _.each(methods, function(method) {
+    Collection.prototype[method] = function() {
+      var args = slice.call(arguments);
+      args.unshift(this.models);
+      return _[method].apply(_, args);
+    };
+  });
+
+  // Underscore methods that take a property name as an argument.
+  var attributeMethods = ['groupBy', 'countBy', 'sortBy', 'indexBy'];
+
+  // Use attributes instead of properties.
+  _.each(attributeMethods, function(method) {
+    Collection.prototype[method] = function(value, context) {
+      var iterator = _.isFunction(value) ? value : function(model) {
+        return model.get(value);
+      };
+      return _[method](this.models, iterator, context);
+    };
+  });
+
+  // Backbone.View
+  // -------------
+
+  // Backbone Views are almost more convention than they are actual code. A View
+  // is simply a JavaScript object that represents a logical chunk of UI in the
+  // DOM. This might be a single item, an entire list, a sidebar or panel, or
+  // even the surrounding frame which wraps your whole app. Defining a chunk of
+  // UI as a **View** allows you to define your DOM events declaratively, without
+  // having to worry about render order ... and makes it easy for the view to
+  // react to specific changes in the state of your models.
+
+  // Creating a Backbone.View creates its initial element outside of the DOM,
+  // if an existing element is not provided...
+  var View = Backbone.View = function(options) {
+    this.cid = _.uniqueId('view');
+    options || (options = {});
+    _.extend(this, _.pick(options, viewOptions));
+    this._ensureElement();
+    this.initialize.apply(this, arguments);
+    this.delegateEvents();
+  };
+
+  // Cached regex to split keys for `delegate`.
+  var delegateEventSplitter = /^(\S+)\s*(.*)$/;
+
+  // List of view options to be merged as properties.
+  var viewOptions = ['model', 'collection', 'el', 'id', 'attributes', 'className', 'tagName', 'events'];
+
+  // Set up all inheritable **Backbone.View** properties and methods.
+  _.extend(View.prototype, Events, {
+
+    // The default `tagName` of a View's element is `"div"`.
+    tagName: 'div',
+
+    // jQuery delegate for element lookup, scoped to DOM elements within the
+    // current view. This should be preferred to global lookups where possible.
+    $: function(selector) {
+      return this.$el.find(selector);
+    },
+
+    // Initialize is an empty function by default. Override it with your own
+    // initialization logic.
+    initialize: function(){},
+
+    // **render** is the core function that your view should override, in order
+    // to populate its element (`this.el`), with the appropriate HTML. The
+    // convention is for **render** to always return `this`.
+    render: function() {
+      return this;
+    },
+
+    // Remove this view by taking the element out of the DOM, and removing any
+    // applicable Backbone.Events listeners.
+    remove: function() {
+      this.$el.remove();
+      this.stopListening();
+      return this;
+    },
+
+    // Change the view's element (`this.el` property), including event
+    // re-delegation.
+    setElement: function(element, delegate) {
+      if (this.$el) this.undelegateEvents();
+      this.$el = element instanceof Backbone.$ ? element : Backbone.$(element);
+      this.el = this.$el[0];
+      if (delegate !== false) this.delegateEvents();
+      return this;
+    },
+
+    // Set callbacks, where `this.events` is a hash of
+    //
+    // *{"event selector": "callback"}*
+    //
+    //     {
+    //       'mousedown .title':  'edit',
+    //       'click .button':     'save',
+    //       'click .open':       function(e) { ... }
+    //     }
+    //
+    // pairs. Callbacks will be bound to the view, with `this` set properly.
+    // Uses event delegation for efficiency.
+    // Omitting the selector binds the event to `this.el`.
+    // This only works for delegate-able events: not `focus`, `blur`, and
+    // not `change`, `submit`, and `reset` in Internet Explorer.
+    delegateEvents: function(events) {
+      if (!(events || (events = _.result(this, 'events')))) return this;
+      this.undelegateEvents();
+      for (var key in events) {
+        var method = events[key];
+        if (!_.isFunction(method)) method = this[events[key]];
+        if (!method) continue;
+
+        var match = key.match(delegateEventSplitter);
+        var eventName = match[1], selector = match[2];
+        method = _.bind(method, this);
+        eventName += '.delegateEvents' + this.cid;
+        if (selector === '') {
+          this.$el.on(eventName, method);
+        } else {
+          this.$el.on(eventName, selector, method);
+        }
+      }
+      return this;
+    },
+
+    // Clears all callbacks previously bound to the view with `delegateEvents`.
+    // You usually don't need to use this, but may wish to if you have multiple
+    // Backbone views attached to the same DOM element.
+    undelegateEvents: function() {
+      this.$el.off('.delegateEvents' + this.cid);
+      return this;
+    },
+
+    // Ensure that the View has a DOM element to render into.
+    // If `this.el` is a string, pass it through `$()`, take the first
+    // matching element, and re-assign it to `el`. Otherwise, create
+    // an element from the `id`, `className` and `tagName` properties.
+    _ensureElement: function() {
+      if (!this.el) {
+        var attrs = _.extend({}, _.result(this, 'attributes'));
+        if (this.id) attrs.id = _.result(this, 'id');
+        if (this.className) attrs['class'] = _.result(this, 'className');
+        var $el = Backbone.$('<' + _.result(this, 'tagName') + '>').attr(attrs);
+        this.setElement($el, false);
+      } else {
+        this.setElement(_.result(this, 'el'), false);
+      }
+    }
+
+  });
+
+  // Backbone.sync
+  // -------------
+
+  // Override this function to change the manner in which Backbone persists
+  // models to the server. You will be passed the type of request, and the
+  // model in question. By default, makes a RESTful Ajax request
+  // to the model's `url()`. Some possible customizations could be:
+  //
+  // * Use `setTimeout` to batch rapid-fire updates into a single request.
+  // * Send up the models as XML instead of JSON.
+  // * Persist models via WebSockets instead of Ajax.
+  //
+  // Turn on `Backbone.emulateHTTP` in order to send `PUT` and `DELETE` requests
+  // as `POST`, with a `_method` parameter containing the true HTTP method,
+  // as well as all requests with the body as `application/x-www-form-urlencoded`
+  // instead of `application/json` with the model in a param named `model`.
+  // Useful when interfacing with server-side languages like **PHP** that make
+  // it difficult to read the body of `PUT` requests.
+  Backbone.sync = function(method, model, options) {
+    var type = methodMap[method];
+
+    // Default options, unless specified.
+    _.defaults(options || (options = {}), {
+      emulateHTTP: Backbone.emulateHTTP,
+      emulateJSON: Backbone.emulateJSON
+    });
+
+    // Default JSON-request options.
+    var params = {type: type, dataType: 'json'};
+
+    // Ensure that we have a URL.
+    if (!options.url) {
+      params.url = _.result(model, 'url') || urlError();
+    }
+
+    // Ensure that we have the appropriate request data.
+    if (options.data == null && model && (method === 'create' || method === 'update' || method === 'patch')) {
+      params.contentType = 'application/json';
+      params.data = JSON.stringify(options.attrs || model.toJSON(options));
+    }
+
+    // For older servers, emulate JSON by encoding the request into an HTML-form.
+    if (options.emulateJSON) {
+      params.contentType = 'application/x-www-form-urlencoded';
+      params.data = params.data ? {model: params.data} : {};
+    }
+
+    // For older servers, emulate HTTP by mimicking the HTTP method with `_method`
+    // And an `X-HTTP-Method-Override` header.
+    if (options.emulateHTTP && (type === 'PUT' || type === 'DELETE' || type === 'PATCH')) {
+      params.type = 'POST';
+      if (options.emulateJSON) params.data._method = type;
+      var beforeSend = options.beforeSend;
+      options.beforeSend = function(xhr) {
+        xhr.setRequestHeader('X-HTTP-Method-Override', type);
+        if (beforeSend) return beforeSend.apply(this, arguments);
+      };
+    }
+
+    // Don't process data on a non-GET request.
+    if (params.type !== 'GET' && !options.emulateJSON) {
+      params.processData = false;
+    }
+
+    // If we're sending a `PATCH` request, and we're in an old Internet Explorer
+    // that still has ActiveX enabled by default, override jQuery to use that
+    // for XHR instead. Remove this line when jQuery supports `PATCH` on IE8.
+    if (params.type === 'PATCH' && noXhrPatch) {
+      params.xhr = function() {
+        return new ActiveXObject("Microsoft.XMLHTTP");
+      };
+    }
+
+    // Make the request, allowing the user to override any Ajax options.
+    var xhr = options.xhr = Backbone.ajax(_.extend(params, options));
+    model.trigger('request', model, xhr, options);
+    return xhr;
+  };
+
+  var noXhrPatch =
+    typeof window !== 'undefined' && !!window.ActiveXObject &&
+      !(window.XMLHttpRequest && (new XMLHttpRequest).dispatchEvent);
+
+  // Map from CRUD to HTTP for our default `Backbone.sync` implementation.
+  var methodMap = {
+    'create': 'POST',
+    'update': 'PUT',
+    'patch':  'PATCH',
+    'delete': 'DELETE',
+    'read':   'GET'
+  };
+
+  // Set the default implementation of `Backbone.ajax` to proxy through to `$`.
+  // Override this if you'd like to use a different library.
+  Backbone.ajax = function() {
+    return Backbone.$.ajax.apply(Backbone.$, arguments);
+  };
+
+  // Backbone.Router
+  // ---------------
+
+  // Routers map faux-URLs to actions, and fire events when routes are
+  // matched. Creating a new one sets its `routes` hash, if not set statically.
+  var Router = Backbone.Router = function(options) {
+    options || (options = {});
+    if (options.routes) this.routes = options.routes;
+    this._bindRoutes();
+    this.initialize.apply(this, arguments);
+  };
+
+  // Cached regular expressions for matching named param parts and splatted
+  // parts of route strings.
+  var optionalParam = /\((.*?)\)/g;
+  var namedParam    = /(\(\?)?:\w+/g;
+  var splatParam    = /\*\w+/g;
+  var escapeRegExp  = /[\-{}\[\]+?.,\\\^$|#\s]/g;
+
+  // Set up all inheritable **Backbone.Router** properties and methods.
+  _.extend(Router.prototype, Events, {
+
+    // Initialize is an empty function by default. Override it with your own
+    // initialization logic.
+    initialize: function(){},
+
+    // Manually bind a single named route to a callback. For example:
+    //
+    //     this.route('search/:query/p:num', 'search', function(query, num) {
+    //       ...
+    //     });
+    //
+    route: function(route, name, callback) {
+      if (!_.isRegExp(route)) route = this._routeToRegExp(route);
+      if (_.isFunction(name)) {
+        callback = name;
+        name = '';
+      }
+      if (!callback) callback = this[name];
+      var router = this;
+      Backbone.history.route(route, function(fragment) {
+        var args = router._extractParameters(route, fragment);
+        router.execute(callback, args);
+        router.trigger.apply(router, ['route:' + name].concat(args));
+        router.trigger('route', name, args);
+        Backbone.history.trigger('route', router, name, args);
+      });
+      return this;
+    },
+
+    // Execute a route handler with the provided parameters.  This is an
+    // excellent place to do pre-route setup or post-route cleanup.
+    execute: function(callback, args) {
+      if (callback) callback.apply(this, args);
+    },
+
+    // Simple proxy to `Backbone.history` to save a fragment into the history.
+    navigate: function(fragment, options) {
+      Backbone.history.navigate(fragment, options);
+      return this;
+    },
+
+    // Bind all defined routes to `Backbone.history`. We have to reverse the
+    // order of the routes here to support behavior where the most general
+    // routes can be defined at the bottom of the route map.
+    _bindRoutes: function() {
+      if (!this.routes) return;
+      this.routes = _.result(this, 'routes');
+      var route, routes = _.keys(this.routes);
+      while ((route = routes.pop()) != null) {
+        this.route(route, this.routes[route]);
+      }
+    },
+
+    // Convert a route string into a regular expression, suitable for matching
+    // against the current location hash.
+    _routeToRegExp: function(route) {
+      route = route.replace(escapeRegExp, '\\$&')
+                   .replace(optionalParam, '(?:$1)?')
+                   .replace(namedParam, function(match, optional) {
+                     return optional ? match : '([^/?]+)';
+                   })
+                   .replace(splatParam, '([^?]*?)');
+      return new RegExp('^' + route + '(?:\\?([\\s\\S]*))?$');
+    },
+
+    // Given a route, and a URL fragment that it matches, return the array of
+    // extracted decoded parameters. Empty or unmatched parameters will be
+    // treated as `null` to normalize cross-browser behavior.
+    _extractParameters: function(route, fragment) {
+      var params = route.exec(fragment).slice(1);
+      return _.map(params, function(param, i) {
+        // Don't decode the search params.
+        if (i === params.length - 1) return param || null;
+        return param ? decodeURIComponent(param) : null;
+      });
+    }
+
+  });
+
+  // Backbone.History
+  // ----------------
+
+  // Handles cross-browser history management, based on either
+  // [pushState](http://diveintohtml5.info/history.html) and real URLs, or
+  // [onhashchange](https://developer.mozilla.org/en-US/docs/DOM/window.onhashchange)
+  // and URL fragments. If the browser supports neither (old IE, natch),
+  // falls back to polling.
+  var History = Backbone.History = function() {
+    this.handlers = [];
+    _.bindAll(this, 'checkUrl');
+
+    // Ensure that `History` can be used outside of the browser.
+    if (typeof window !== 'undefined') {
+      this.location = window.location;
+      this.history = window.history;
+    }
+  };
+
+  // Cached regex for stripping a leading hash/slash and trailing space.
+  var routeStripper = /^[#\/]|\s+$/g;
+
+  // Cached regex for stripping leading and trailing slashes.
+  var rootStripper = /^\/+|\/+$/g;
+
+  // Cached regex for detecting MSIE.
+  var isExplorer = /msie [\w.]+/;
+
+  // Cached regex for removing a trailing slash.
+  var trailingSlash = /\/$/;
+
+  // Cached regex for stripping urls of hash.
+  var pathStripper = /#.*$/;
+
+  // Has the history handling already been started?
+  History.started = false;
+
+  // Set up all inheritable **Backbone.History** properties and methods.
+  _.extend(History.prototype, Events, {
+
+    // The default interval to poll for hash changes, if necessary, is
+    // twenty times a second.
+    interval: 50,
+
+    // Are we at the app root?
+    atRoot: function() {
+      return this.location.pathname.replace(/[^\/]$/, '$&/') === this.root;
+    },
+
+    // Gets the true hash value. Cannot use location.hash directly due to bug
+    // in Firefox where location.hash will always be decoded.
+    getHash: function(window) {
+      var match = (window || this).location.href.match(/#(.*)$/);
+      return match ? match[1] : '';
+    },
+
+    // Get the cross-browser normalized URL fragment, either from the URL,
+    // the hash, or the override.
+    getFragment: function(fragment, forcePushState) {
+      if (fragment == null) {
+        if (this._hasPushState || !this._wantsHashChange || forcePushState) {
+          fragment = decodeURI(this.location.pathname + this.location.search);
+          var root = this.root.replace(trailingSlash, '');
+          if (!fragment.indexOf(root)) fragment = fragment.slice(root.length);
+        } else {
+          fragment = this.getHash();
+        }
+      }
+      return fragment.replace(routeStripper, '');
+    },
+
+    // Start the hash change handling, returning `true` if the current URL matches
+    // an existing route, and `false` otherwise.
+    start: function(options) {
+      if (History.started) throw new Error("Backbone.history has already been started");
+      History.started = true;
+
+      // Figure out the initial configuration. Do we need an iframe?
+      // Is pushState desired ... is it available?
+      this.options          = _.extend({root: '/'}, this.options, options);
+      this.root             = this.options.root;
+      this._wantsHashChange = this.options.hashChange !== false;
+      this._wantsPushState  = !!this.options.pushState;
+      this._hasPushState    = !!(this.options.pushState && this.history && this.history.pushState);
+      var fragment          = this.getFragment();
+      var docMode           = document.documentMode;
+      var oldIE             = (isExplorer.exec(navigator.userAgent.toLowerCase()) && (!docMode || docMode <= 7));
+
+      // Normalize root to always include a leading and trailing slash.
+      this.root = ('/' + this.root + '/').replace(rootStripper, '/');
+
+      if (oldIE && this._wantsHashChange) {
+        var frame = Backbone.$('<iframe src="javascript:0" tabindex="-1">');
+        this.iframe = frame.hide().appendTo('body')[0].contentWindow;
+        this.navigate(fragment);
+      }
+
+      // Depending on whether we're using pushState or hashes, and whether
+      // 'onhashchange' is supported, determine how we check the URL state.
+      if (this._hasPushState) {
+        Backbone.$(window).on('popstate', this.checkUrl);
+      } else if (this._wantsHashChange && ('onhashchange' in window) && !oldIE) {
+        Backbone.$(window).on('hashchange', this.checkUrl);
+      } else if (this._wantsHashChange) {
+        this._checkUrlInterval = setInterval(this.checkUrl, this.interval);
+      }
+
+      // Determine if we need to change the base url, for a pushState link
+      // opened by a non-pushState browser.
+      this.fragment = fragment;
+      var loc = this.location;
+
+      // Transition from hashChange to pushState or vice versa if both are
+      // requested.
+      if (this._wantsHashChange && this._wantsPushState) {
+
+        // If we've started off with a route from a `pushState`-enabled
+        // browser, but we're currently in a browser that doesn't support it...
+        if (!this._hasPushState && !this.atRoot()) {
+          this.fragment = this.getFragment(null, true);
+          this.location.replace(this.root + '#' + this.fragment);
+          // Return immediately as browser will do redirect to new url
+          return true;
+
+        // Or if we've started out with a hash-based route, but we're currently
+        // in a browser where it could be `pushState`-based instead...
+        } else if (this._hasPushState && this.atRoot() && loc.hash) {
+          this.fragment = this.getHash().replace(routeStripper, '');
+          this.history.replaceState({}, document.title, this.root + this.fragment);
+        }
+
+      }
+
+      if (!this.options.silent) return this.loadUrl();
+    },
+
+    // Disable Backbone.history, perhaps temporarily. Not useful in a real app,
+    // but possibly useful for unit testing Routers.
+    stop: function() {
+      Backbone.$(window).off('popstate', this.checkUrl).off('hashchange', this.checkUrl);
+      if (this._checkUrlInterval) clearInterval(this._checkUrlInterval);
+      History.started = false;
+    },
+
+    // Add a route to be tested when the fragment changes. Routes added later
+    // may override previous routes.
+    route: function(route, callback) {
+      this.handlers.unshift({route: route, callback: callback});
+    },
+
+    // Checks the current URL to see if it has changed, and if it has,
+    // calls `loadUrl`, normalizing across the hidden iframe.
+    checkUrl: function(e) {
+      var current = this.getFragment();
+      if (current === this.fragment && this.iframe) {
+        current = this.getFragment(this.getHash(this.iframe));
+      }
+      if (current === this.fragment) return false;
+      if (this.iframe) this.navigate(current);
+      this.loadUrl();
+    },
+
+    // Attempt to load the current URL fragment. If a route succeeds with a
+    // match, returns `true`. If no defined routes matches the fragment,
+    // returns `false`.
+    loadUrl: function(fragment) {
+      fragment = this.fragment = this.getFragment(fragment);
+      return _.any(this.handlers, function(handler) {
+        if (handler.route.test(fragment)) {
+          handler.callback(fragment);
+          return true;
+        }
+      });
+    },
+
+    // Save a fragment into the hash history, or replace the URL state if the
+    // 'replace' option is passed. You are responsible for properly URL-encoding
+    // the fragment in advance.
+    //
+    // The options object can contain `trigger: true` if you wish to have the
+    // route callback be fired (not usually desirable), or `replace: true`, if
+    // you wish to modify the current URL without adding an entry to the history.
+    navigate: function(fragment, options) {
+      if (!History.started) return false;
+      if (!options || options === true) options = {trigger: !!options};
+
+      var url = this.root + (fragment = this.getFragment(fragment || ''));
+
+      // Strip the hash for matching.
+      fragment = fragment.replace(pathStripper, '');
+
+      if (this.fragment === fragment) return;
+      this.fragment = fragment;
+
+      // Don't include a trailing slash on the root.
+      if (fragment === '' && url !== '/') url = url.slice(0, -1);
+
+      // If pushState is available, we use it to set the fragment as a real URL.
+      if (this._hasPushState) {
+        this.history[options.replace ? 'replaceState' : 'pushState']({}, document.title, url);
+
+      // If hash changes haven't been explicitly disabled, update the hash
+      // fragment to store history.
+      } else if (this._wantsHashChange) {
+        this._updateHash(this.location, fragment, options.replace);
+        if (this.iframe && (fragment !== this.getFragment(this.getHash(this.iframe)))) {
+          // Opening and closing the iframe tricks IE7 and earlier to push a
+          // history entry on hash-tag change.  When replace is true, we don't
+          // want this.
+          if(!options.replace) this.iframe.document.open().close();
+          this._updateHash(this.iframe.location, fragment, options.replace);
+        }
+
+      // If you've told us that you explicitly don't want fallback hashchange-
+      // based history, then `navigate` becomes a page refresh.
+      } else {
+        return this.location.assign(url);
+      }
+      if (options.trigger) return this.loadUrl(fragment);
+    },
+
+    // Update the hash location, either replacing the current entry, or adding
+    // a new one to the browser history.
+    _updateHash: function(location, fragment, replace) {
+      if (replace) {
+        var href = location.href.replace(/(javascript:|#).*$/, '');
+        location.replace(href + '#' + fragment);
+      } else {
+        // Some browsers require that `hash` contains a leading #.
+        location.hash = '#' + fragment;
+      }
+    }
+
+  });
+
+  // Create the default Backbone.history.
+  Backbone.history = new History;
+
+  // Helpers
+  // -------
+
+  // Helper function to correctly set up the prototype chain, for subclasses.
+  // Similar to `goog.inherits`, but uses a hash of prototype properties and
+  // class properties to be extended.
+  var extend = function(protoProps, staticProps) {
+    var parent = this;
+    var child;
+
+    // The constructor function for the new subclass is either defined by you
+    // (the "constructor" property in your `extend` definition), or defaulted
+    // by us to simply call the parent's constructor.
+    if (protoProps && _.has(protoProps, 'constructor')) {
+      child = protoProps.constructor;
+    } else {
+      child = function(){ return parent.apply(this, arguments); };
+    }
+
+    // Add static properties to the constructor function, if supplied.
+    _.extend(child, parent, staticProps);
+
+    // Set the prototype chain to inherit from `parent`, without calling
+    // `parent`'s constructor function.
+    var Surrogate = function(){ this.constructor = child; };
+    Surrogate.prototype = parent.prototype;
+    child.prototype = new Surrogate;
+
+    // Add prototype properties (instance properties) to the subclass,
+    // if supplied.
+    if (protoProps) _.extend(child.prototype, protoProps);
+
+    // Set a convenience property in case the parent's prototype is needed
+    // later.
+    child.__super__ = parent.prototype;
+
+    return child;
+  };
+
+  // Set up inheritance for the model, collection, router, view and history.
+  Model.extend = Collection.extend = Router.extend = View.extend = History.extend = extend;
+
+  // Throw an error when a URL is needed, and none is supplied.
+  var urlError = function() {
+    throw new Error('A "url" property or function must be specified');
+  };
+
+  // Wrap an optional error callback with a fallback error event.
+  var wrapError = function(model, options) {
+    var error = options.error;
+    options.error = function(resp) {
+      if (error) error(model, resp, options);
+      model.trigger('error', model, resp, options);
+    };
+  };
+
+  return Backbone;
+
+}));
+
 /*
 	ractive-legacy.js v0.5.6
 	2014-08-31 - commit ea62fca5 
@@ -38485,7 +40094,10 @@ L.Map.include({
   nav.MPScrollSpyDefaults = {
     activeClass: 'active',
     offset: 80,
-    throttle: 200
+    throttle: 200,
+    gotoEvent: 'click',
+    gotoPreventDefault: true,
+    gotoSpeed: 600
   };
   function MPScrollSpy(element, options) {
     // Set some initial values and options
@@ -38509,8 +40121,10 @@ L.Map.include({
       this._throttledListen();
       $(window).on(this._scrollEvent, this._throttledListen);
 
-      // Handle click
-      this.$listeners.on('click', _.bind(this.gotoClick, this));
+      // Handle click or other event
+      if (this.options.gotoEvent) {
+        this.$listeners.on(this.options.gotoEvent, _.bind(this.gotoClick, this));
+      }
     },
 
     listen: function() {
@@ -38534,9 +40148,10 @@ L.Map.include({
     },
 
     gotoClick: function(e) {
-      e.preventDefault();
+      if (this.options.gotoPreventDefault) {
+        e.preventDefault();
+      }
       var $listener = $(e.target);
-
       this.goto($(e.target).data('spyOn'));
     },
 
@@ -38546,7 +40161,7 @@ L.Map.include({
 
       $('html, body').animate({
         scrollTop: (top - this.options.offset)
-      }, 600);
+      }, this.options.gotoSpeed);
     },
 
     remove: function() {
@@ -39074,10 +40689,10 @@ define('text',['module'], function (module) {
 });
 
 
-define('text!templates/application.mustache',[],function () { return '<div class="application-container">\n  <div class="message-container"></div>\n\n  <div class="content-container">\n    <div class="districts-nav cf">\n      {{#districts:gi}}\n        <div class="type-group {{ gi }}-districts">\n          <span><img title="{{ typeNames[gi] }}" class="custom-icon" src="{{ paths.images }}{{ gi }}.png"></span>\n          <ul>\n            {{#this:di}}\n              <li><a href="#"\n                style="background-color: {{ pviColor.hex() }};"\n                data-spy-on="district-{{ district }}"\n                on-tap="selectDistrict:{{ district }}">\n                {{ district }}\n              </a></li>\n            {{/this}}\n          </ul>\n        </div>\n      {{/districts}}\n    </div>\n\n    <div class="districts">\n      {{#districts:gi}}\n        <h2>{{ typeNames[gi] }}</h2>\n\n        {{#this:di}}\n          <div class="district" data-spy-me="district-{{ district }}">\n            <h3>\n              District {{ district }}\n              <img class="custom-icon" src="{{ paths.images }}{{ type }}.png">\n            </h3>\n\n            <div class="row">\n              <div class="column-medium-50">\n                <div class="description-container">\n                  {{ description }}\n                </div>\n              </div>\n\n              <div class="column-medium-25 details">\n                <div class="details-container">\n                  <div class="row">\n                    <div class="column-small-50 column-medium-100">\n                      <div class="candidates">\n                        <div class="candidate-name">\n                          {{ (incumbentparty === \'R\') ? candidater : candidated }}\n                          {{#incumbentparty}}\n                            <span title="Incumbent" class="label">I</span>\n                          {{/incumbentparty}}\n                          <span class="label bg-color-political-{{ (incumbentparty === \'R\') ? \'r\' : \'dfl\' }}">{{ (incumbentparty === \'R\') ? \'R\' : \'DFL\' }}</span>\n                        </div>\n                        <div class="vs">vs.</div>\n                        <div class="candidate-name">\n                          {{ (incumbentparty === \'R\') ? candidated : candidater }}\n                          <span class="label bg-color-political-{{ (incumbentparty === \'R\') ? \'dfl\' : \'r\' }}">{{ (incumbentparty === \'R\') ? \'DFL\' : \'R\' }}</span>\n                        </div>\n                      </div>\n                    </div>\n\n                    <div class="column-small-50 column-medium-100">\n\n                      <div class="chart-container">\n                        <div class="component-label">PVI</div>\n                        <div class="chart"\n                          title="PVI: {{ pvi < 0 ? \'DFL\' : \'R\' }} {{ f.number(Math.abs(pvi), 2) }}">\n                          <div class="mid-tick"></div>\n                          <div class="tick"\n                            style="background-color: {{ pviColor.hex() }}; left: {{ pT(pvi, -10, 10) }}%;">\n                          </div>\n                        </div>\n                      </div>\n\n                      <div class="chart-container">\n                        <div class="component-label">2012</div>\n                        <div class="chart"\n                          title="2012 margin: {{ pvi < 0 ? \'DFL\' : \'R\' }} {{ f.number(Math.abs(lean2012), 2) }}">\n                          <div class="mid-tick"></div>\n                          <div class="tick"\n                            style="background-color: {{ cR(lean2012).hex() }}; left: {{ pT(lean2012, -10, 10) }}%;">\n                          </div>\n                        </div>\n                      </div>\n\n                      <div class="chart-container">\n                        <div class="component-label">Presidential</div>\n                        <div class="chart"\n                          title="2012 Presidential lean: {{ pvi < 0 ? \'DFL\' : \'R\' }} {{ f.number(Math.abs(leanpres), 2) }}">\n                          <div class="mid-tick"></div>\n                          <div class="tick"\n                            style="background-color: {{ pviColor.hex() }}; left: {{ pT(leanpres, -10, 10) }}%;">\n                          </div>\n                        </div>\n                      </div>\n                    </div>\n                  </div>\n                </div>\n              </div>\n\n              <div class="column-medium-25">\n                <div class="map-container">\n                  {{^boundary.simple_shape}}\n                    <div class="district-map">\n                      <div class="loading-block"></div>\n                    </div>\n                  {{/boundary.simple_shape}}\n                  {{#boundary.simple_shape}}\n                    <div class="district-map"\n                      id="district-map-{{ district }}"\n                      decorator="map:{{ this }}">\n                    </div>\n                  {{/boundary.simple_shape}}\n                </div>\n              </div>\n          </div>\n        {{/this}}\n      {{/districts}}\n    </div>\n  </div>\n\n  <div class="footnote-container">\n    <div class="footnote">\n      <p>Some code, techniques, and data on <a href="https://github.com/minnpost/minnpost-hot-house-districts-2014" target="_blank">Github</a>.</p>\n\n      <p>Some map data © OpenStreetMap contributors; licensed under the <a href="http://www.openstreetmap.org/copyright" target="_blank">Open Data Commons Open Database License</a>.  Some map design © MapBox; licensed according to the <a href="http://mapbox.com/tos/" target="_blank">MapBox Terms of Service</a>.</p>\n\n      <p>\n        http://thenounproject.com/term/radar/793/\n        http://thenounproject.com/term/eye/19791/\n        http://thenounproject.com/term/blind/19790/\n    </div>\n  </div>\n</div>\n';});
+define('text!templates/application.mustache',[],function () { return '<div class="application-container">\n  <div class="message-container"></div>\n\n  <div class="content-container">\n    {{^districts}}\n      <div class="loading-container">\n        <i class="loading"></i> Loading...\n      </div> \n    {{/districts}}\n\n    <div class="districts-nav cf">\n      <ul class="cf">\n        {{#districts:gi}}\n          <li class="nav-group-label group-{{ gi }}">\n            {{ typeNames[gi] }}\n          </li>\n\n          {{#this:di}}\n            <li class="nav-item"><a href="#district/{{ district }}"\n              style=""\n              data-spy-on="{{ district }}"\n              on-tap="selectDistrict:{{ district }}">\n              {{ district }}\n            </a></li>\n          {{/this}}\n        {{/districts}}\n      </ul>\n    </div>\n\n    <div class="districts">\n      {{#districts:gi}}\n        <h2>{{ typeNames[gi] }}</h2>\n\n        {{#this:di}}\n          <div class="district" data-spy-me="{{ district }}" id="{{ district }}">\n            <h3>\n              District {{ district }}\n            </h3>\n\n            <div class="candidates">\n              <span class="{{#incumbentparty}}incumbent-candidate{{/incumbentparty}}">\n                {{ (incumbentparty === \'R\') ? candidater : candidated }}\n              </span>\n              <span class="label bg-color-political-{{ (incumbentparty === \'R\') ? \'r\' : \'dfl\' }}">{{ (incumbentparty === \'R\') ? \'R\' : \'DFL\' }}</span>\n              <span class="vs">vs.</span>\n              {{ (incumbentparty === \'R\') ? candidated : candidater }}\n              <span class="label bg-color-political-{{ (incumbentparty === \'R\') ? \'dfl\' : \'r\' }}">{{ (incumbentparty === \'R\') ? \'DFL\' : \'R\' }}</span>\n            </div>\n\n            <div class="row">\n              <div class="column-medium-50">\n                <div class="description-container">\n                  {{{ description }}}\n                </div>\n              </div>\n\n              <div class="column-medium-25 details">\n                <div class="details-container">\n\n                  <div class="chart-container">\n                    <div class="component-label">Average lean</div>\n                    <div class="chart-canvas">\n                      <div class="label-d">D</div>\n                      <div class="chart"\n                        title="PVI Lean: {{ pvi < 0 ? \'DFL\' : \'R\' }} {{ f.number(Math.abs(pvi), 2) }}">\n                        <div class="mid-tick"></div>\n                        <div class="tick"\n                          style="background-color: {{ pviColor.hex() }}; left: {{ pT(pvi, -10, 10) }}%;">\n                        </div>\n                      </div>\n                      <div class="label-r">R</div>\n                    </div>\n                  </div>\n\n                  <div class="chart-container">\n                    <div class="component-label">2012 House margin</div>\n                    <div class="chart-canvas">\n                      <div class="label-d">D</div>\n                      <div class="chart"\n                        title="2012 margin: {{ lean2012 < 0 ? \'DFL\' : \'R\' }} {{ f.number(Math.abs(lean2012), 2) }}">\n                        <div class="mid-tick"></div>\n                        <div class="tick"\n                          style="background-color: {{ cR(lean2012).hex() }}; left: {{ pT(lean2012, -10, 10) }}%;">\n                        </div>\n                      </div>\n                      <div class="label-r">R</div>\n                    </div>\n                  </div>\n\n                  <div class="chart-container">\n                    <div class="component-label">Presidential margin</div>\n                    <div class="chart-canvas">\n                      <div class="label-d">D</div>\n                      <div class="chart"\n                        title="2012 Presidential lean: {{ leanpres < 0 ? \'DFL\' : \'R\' }} {{ f.number(Math.abs(leanpres), 2) }}">\n                        <div class="mid-tick"></div>\n                        <div class="tick"\n                          style="background-color: {{ cR(leanpres).hex() }}; left: {{ pT(leanpres, -10, 10) }}%;">\n                        </div>\n                      </div>\n                      <div class="label-r">R</div>\n                    </div>\n                  </div>\n                </div>\n              </div>\n\n              <div class="column-medium-25">\n                <div class="map-container">\n                  {{^boundary.simple_shape}}\n                    <div class="district-map">\n                      <div class="loading-block"></div>\n                    </div>\n                  {{/boundary.simple_shape}}\n                  {{#boundary.simple_shape}}\n                    <div class="district-map"\n                      id="district-map-{{ district }}"\n                      decorator="map:{{ this }}">\n                    </div>\n                  {{/boundary.simple_shape}}\n                </div>\n              </div>\n          </div>\n        {{/this}}\n      {{/districts}}\n    </div>\n  </div>\n\n  <div class="footnote-container">\n    <div class="footnote">\n      <p>\n        Some icons from the Noun Project\n        including <a target="_blank" href="http://thenounproject.com/term/radar/793/">radar</a> by Paul te Kortschot,\n        <a target="_blank" href="http://thenounproject.com/term/eye/19791/">eye</a>\n        and <a target="_blank" href="http://thenounproject.com/term/blind/19790/">blind</a> by Michael Rowe.\n        Some code, techniques, and data on <a href="https://github.com/minnpost/minnpost-hot-house-districts-2014" target="_blank">Github</a>.\n      </p>\n\n      <p>Some map data © OpenStreetMap contributors; licensed under the <a href="http://www.openstreetmap.org/copyright" target="_blank">Open Data Commons Open Database License</a>.  Some map design © MapBox; licensed according to the <a href="http://mapbox.com/tos/" target="_blank">MapBox Terms of Service</a>.</p>\n    </div>\n  </div>\n</div>\n';});
 
 
-define('text!../data/districts.json',[],function () { return '{"Hot House Districts 2014":[{"district":"1B","pvi":-3.842167034,"lean2012":3.95,"leanpres":-4,"type":"watch","candidater":"Debra Kiel","candidated":"Eric Bergeson","candidatei":"","incumbentparty":"R","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":1},{"district":"2A","pvi":-4.387150035,"lean2012":-9.31,"leanpres":-4,"type":"watch","candidater":"Dave Hancock","candidated":"Roger Erickson","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":2},{"district":"2B","pvi":-0.116624542,"lean2012":2,"leanpres":-4,"type":"watch","candidater":"Steve Green","candidated":"David Sobieski","candidatei":"","incumbentparty":"R","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":3},{"district":"10B","pvi":-4.351757483,"lean2012":-1.47,"leanpres":-4,"type":"watch","candidater":"Dale K. Lueck","candidated":"Joe Radinovich","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":4},{"district":"11B","pvi":-0.512959063,"lean2012":-2.66,"leanpres":-4,"type":"watch","candidater":"Tim Faust","candidated":"Jason Rarick","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":5},{"district":"17B","pvi":-0.257265384,"lean2012":-4.17,"leanpres":-4,"type":"watch","candidater":"Dave Baker","candidated":"Mary Sawatzky","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":6},{"district":"27A","pvi":-3.221256476,"lean2012":-3.2,"leanpres":-4,"type":"watch","candidater":"Peggy Bennett","candidated":"Shannon Savick","candidatei":"Thomas Keith Price","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":7},{"district":"48A","pvi":-2.040107947,"lean2012":-0.82,"leanpres":-4,"type":"watch","candidater":"Kirk Stensrud","candidated":"Yvonne Selcer","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":8},{"district":"49A","pvi":-1.154977486,"lean2012":-11.72,"leanpres":-4,"type":"watch","candidater":"Dario Anselmo","candidated":"Ron Erhardt","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":9},{"district":"49B","pvi":3.211975607,"lean2012":-6.76,"leanpres":-4,"type":"watch","candidater":"Barb Sutter","candidated":"Paul Rosenthal","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":10},{"district":"51A","pvi":-4.796473124,"lean2012":-11.21,"leanpres":-4,"type":"watch","candidater":"Andrea Todd-Harlin","candidated":"Sandra Masin","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":11},{"district":"51B","pvi":-0.709947338,"lean2012":-3.87,"leanpres":-4,"type":"watch","candidater":"Jen Wilson","candidated":"Laurie Halverson","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":12},{"district":"12A","pvi":7.143330362,"lean2012":-1.2,"leanpres":-4,"type":"watch","candidater":"Jeff Backer","candidated":"Jay McNamar","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":13},{"district":"56B","pvi":5.670417123,"lean2012":-0.8,"leanpres":-4,"type":"watch","candidater":"Roz Peterson","candidated":"Will Morgan","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":14},{"district":"14B","pvi":-12.61853235,"lean2012":-12.73,"leanpres":-4,"type":"watch","candidater":"Jim Knoblach","candidated":"Zachary Dorholt","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":15},{"district":"5B","pvi":-4.249005146,"lean2012":-6.96,"leanpres":-4,"type":"radar","candidater":"Justin Eichorn","candidated":"Tom Anzelc","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":16},{"district":"10A","pvi":-14.12174276,"lean2012":-14.1,"leanpres":-4,"type":"radar","candidater":"John Ward ","candidated":"Joshua Heintzeman","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":17},{"district":"36A","pvi":-6.1949472,"lean2012":2.17,"leanpres":-4,"type":"radar","candidater":"Mark W. Uglem","candidated":"Jefferson Fietek","candidatei":"","incumbentparty":"R","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":18},{"district":"42A","pvi":-5.212494668,"lean2012":-6.74,"leanpres":-4,"type":"radar","candidater":"Randy Jessup","candidated":"Barb Yarusso","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":19},{"district":"44B","pvi":-5.691491551,"lean2012":-11.79,"leanpres":-4,"type":"radar","candidater":"Jon Applebaum","candidated":"Ryan Rutzick","candidatei":"","incumbentparty":"","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":20},{"district":"60B","pvi":4.5,"lean2012":1.2,"leanpres":2.3,"type":"unwatch","candidater":"Tester Test","candidated":"Tester McTest","candidatei":"","incumbentparty":"D","description":"Kitten Ipsum prrrrr spot, her jump lay down in your way basket feline home loves first sucked picture snickers leap. Leo pillow cat down fuzzy life saved loves cats happy shed everywhere he home kittens, cat cat sit birdwatch oh neighbors siamese tiny waffles years trust. Front, cat scottish fold family smokey hot oscar feline cat. Kitten, kitty kittens ham sleep new kitties smile box cute she spoon french friendly meowlly peaceful fostering mom little loves 9th new kitty. Cake day tux kitty size spot girlfriend home Baxter happy cramped sleep around purses wonderful her. Meowschwitz cat norwegian forest cat sleep on your keyboard cat snuggliest, caught kittens he cat cat judging you royal cat. Birdwatching ever long cute kitten awesomeness cats kitten sunbathe petting looks, friends claw tongue petting fabulous years psycho cat belly fostering making biscuits family.","rowNumber":21}]}';});
+define('text!../data/districts.json',[],function () { return '{"Hot House Districts 2014":[{"district":"1B","pvi":-3.842167034,"lean2012":3.95,"leanpres":5.8,"type":"watch","candidater":"Debra Kiel","candidated":"Eric Bergeson","candidatei":"","incumbentparty":"R","description":"Democrats are bullish about their chances to take back a couple of seats in northwestern Minnesota that they lost in the 2010 election. That includes House District 1B, currently held by two-term Republican Rep. Deb Kiel. The homemaker and farmer from Crookston won the 2012 election by less than 5 percent of the vote. Democrats have recruited Eric Bergeson, a 2011 Bush fellow, author and prolific motivational speaker on one of the big issues up in the district: caring for aging populations. But most pundits say it’s Kiel’s race to lose in a low-turnout midterm election.","rowNumber":1},{"district":"2A","pvi":-4.387150035,"lean2012":-9.31,"leanpres":2.01,"type":"watch","candidater":"Dave Hancock","candidated":"Roger Erickson","candidatei":"","incumbentparty":"D","description":"Like many races this cycle, the contest for House District 2A is a rematch. Freshman DFL Rep. Roger Erickson is defending his seat from Republican Dave Hancock, a retired small business owner from Bemidji who held the seat before Erickson did. Erickson is fighting the conservative leanings of his district and the fact that he took a risky vote in favor of legalizing gay marriage last year (his district voted nearly 60 percent in favor of a constitutional gay marriage ban in 2012). But Erickson is a popular retired schoolteacher and high school football coach from Baudette, and many think his local name recognition could help him stave off an upset this fall.","rowNumber":2},{"district":"2B","pvi":-0.116624542,"lean2012":2,"leanpres":13.85,"type":"watch","candidater":"Steve Green","candidated":"David Sobieski","candidatei":"","incumbentparty":"R","description":"Neither Republicans or Democrats know exactly how to read the 2012 election in House District 02B, where Republican Rep. Steve Green survived a challenge from former DFL Rep. Brita Sailer by just 2 points. The complicating factor: hundreds of thousands of dollars were spent on the race from outside groups on both sides. Democrats are targeting the race again this year, but they’ve fielded a newcomer candidate in David Sobieski, a small business owner and a U.S. Air Force veteran. Sobieski has labeled himself a “blue dog” Democrat — much like the area’s moderate congressman, Collin Peterson — to appeal to district’s swing voters.","rowNumber":3},{"district":"10B","pvi":-4.351757483,"lean2012":-1.47,"leanpres":9.05,"type":"watch","candidater":"Dale K. Lueck","candidated":"Joe Radinovich","candidatei":"","incumbentparty":"D","description":"DFL Rep. Joe Radinovich is constantly reminded of the number 323. That’s how many votes the freshman from Crosby eked out his first victory for the House in 2012, and it shows the challenge he faces this challenge this cycle. Republicans have gone after Radinovich for voting to legalizing gay marriage, despite the fact that his district voted more than 62 percent in favor of banning gay marriage in the constitution in 2012. Radinovich’s vote was subject to a short-lived but well-publicized recall effort, and it’s coming up on the campaign trail, too. Gay marriage or not, Radinovich was going to have a hard slog to retain his seat — it leans Republican and he won it in a strong year for Democrats. But operatives note that Radinovich is a dedicated campaigner, which means this race has toss up written all over it.","rowNumber":4},{"district":"11B","pvi":-0.512959063,"lean2012":-2.66,"leanpres":4.18,"type":"watch","candidater":"Tim Faust","candidated":"Jason Rarick","candidatei":"","incumbentparty":"D","description":"The Hinckley-area is as politically swingy as they come in greater Minnesota, and no one knows that better that DFL Rep. Tim Faust. He was first elected in the anti-Bush wave of 2006, but he was booted from his seat when the reverse happened in 2010. He was welcomed back into the Legislature after the 2012 election, but Democrats are still afraid of whiplash. Republicans have fielded first-time candidate Jason Rarick, an electrician by trade who is running as a straight-talking, common sense Minnesotan. This is another district where some operatives say gay marriage could matter — Faust, a Lutheran minister, supported legalizing gay marriage last year despite his district’s support for the 2012 failed constitutional referendum.","rowNumber":5},{"district":"17B","pvi":-0.257265384,"lean2012":-4.17,"leanpres":4.08,"type":"watch","candidater":"Dave Baker","candidated":"Mary Sawatzky","candidatei":"","incumbentparty":"D","description":"The Willmar area has swung back and forth between political parties for the last three election cycles, making it a target for both parties this year. Incumbent DFL Rep. Mary Sawatzky was one of only two Democrats in her caucus to vote against a bill to legalize gay marriage, after her district supported a constitutional gay marriage ban in 2012. The vote has protected her from attacks on that issue, but she’s already weathering other criticisms from Republican groups trying to tie her to $2 billion in tax increases over the last two years and the faulty state health insurance exchange. Her opponent, Republican David Baker, owns a handful of hotels and investment properties in the district.","rowNumber":6},{"district":"27A","pvi":-3.221256476,"lean2012":-3.2,"leanpres":-13.22,"type":"watch","candidater":"Peggy Bennett","candidated":"Shannon Savick","candidatei":"Thomas Keith Price","incumbentparty":"D","description":"The House seat that includes the city of Austin in southern Minnesota is known for it’s close contests, and this year will likely be no different. In 2010, former GOP Rep. Rich Murray snatched the seat from an incumbent Democrat by less than a half of a percentage point, which triggered an automatic recount. Two years later, DFLer Shannon Savick, a former mayor of Wells, won the seat from Murray by about 2 percent of the vote. The vote two years ago was complicated by fact that Independence Party candidate William Wagner received 7.7 percent of the vote. A similar dynamic is shaping up this year: Savick is defending her seat from Republican Peggy Bennett, a local schoolteacher, and the Independence Party has fielded candidate Thomas Prince, who has kept a low profile in the race so far.","rowNumber":7},{"district":"48A","pvi":-2.040107947,"lean2012":-0.82,"leanpres":-5.93,"type":"watch","candidater":"Kirk Stensrud","candidated":"Yvonne Selcer","candidatei":"","incumbentparty":"D","description":"DFL Rep. Yvonne Selcer won her Minnetonka-area House seat two years ago with a slim margin of less than 1 percent of the vote — and that was a good year for Democrats. Republicans are betting they can steal the seat back this year in a low-turnout election. Former Republican Rep. Kirk Stensrud, who held the seat before Selcer, is trying to return to the Legislature this cycle, and he’s getting help from groups like the Minnesota Chamber of Commerce. But the race could turn on education issues in the suburban district — Stensrud is pushing for more local control for districts, while Selcer, a former school teacher, is touting Democrats’ repayment of the state’s school shift and investments in all-day kindergarten.","rowNumber":8},{"district":"49A","pvi":-1.154977486,"lean2012":-11.72,"leanpres":-5.6,"type":"watch","candidater":"Dario Anselmo","candidated":"Ron Erhardt","candidatei":"","incumbentparty":"D","description":"DFL Rep. Ron Erhardt isn’t a easy target. He spent his first nine terms in the House as a popular moderate Republican before he was ousted in 2008 for supporting a gas tax increase. When he decided to run again in 2012, Erhardt opted for the Democratic Party. And over the last two years in the Legislature, he’s voted like someone who toes the line between both parties, a good fit for the politically volatile Edina House district he represents. But he has a strong challenger in Dario Anselmo, the former owner of the Fine Line Music Café and founder of the Minneapolis Warehouse District Business Association. It’s Anselmo’s first stab at public office, but he’s proven to be an adept fundraiser and campaigner, Republicans say, making this a race to watch this cycle.","rowNumber":9},{"district":"49B","pvi":3.211975607,"lean2012":-6.76,"leanpres":-6.25,"type":"watch","candidater":"Barb Sutter","candidated":"Paul Rosenthal","candidatei":"","incumbentparty":"D","description":"There’s good reason DFL Rep. Paul Rosenthal was one of a handful of legislators who was able to break from Democrats on tough votes to raise taxes in 2013. Rosenthal, a foreign currency trader from Edina, was first elected in 2008, but he lost his seat in the GOP wave of 2010. He made it back to the Legislature in 2012, and DFL leadership wants to keep him there. His Republican opponent, Barbara Sutter, is a former tax accountant who has been involved in local politics for years. She’s talking mostly about the state’s tax climate, jobs and opposition to the new health insurance exchange in the business-friendly suburban district.","rowNumber":10},{"district":"51A","pvi":-4.796473124,"lean2012":-11.21,"leanpres":-13.06,"type":"watch","candidater":"Andrea Todd-Harlin","candidated":"Sandra Masin","candidatei":"","incumbentparty":"D","description":"It’s a familiar tale in the Twin Cities suburbs &mdash; DFLers were swept into districts during the anti-Bush years of 2006 and 2008 and quickly swept back out in 2010 over the healthcare overhaul. Many, like DFL Rep. Sandra Masin in Eagan, successfully reclaimed their seat in the 2012 and hoping to keep it through this midterm election. Masin won with more than 10 percent of the vote last fall, but the district usually swings with the national political winds. As of the last campaign finance reporting deadline, her Republican opponent Andrea Todd-Harlin had kept pace with Masin on fundraising.","rowNumber":11},{"district":"51B","pvi":-0.709947338,"lean2012":-3.87,"leanpres":-4.64,"type":"watch","candidater":"Jen Wilson","candidated":"Laurie Halverson","candidatei":"","incumbentparty":"D","description":"Freshman DFL Rep. Laurie Halverson could be the Amy Klobuchar of local politics. Much like the state’s popular U.S. senator, Halverson won a tough election and put her head down in her first term to work on non-controversial issue like cutting back on homelessness and youth smoking. A former employee of Blue Cross, Halverson was also the lone DFL House member to vote against the bill to create a health insurance exchange over lack of health care industry representation on the exchange board, and she got the highest marks of any Democrat in the House from the Minnesota Chamber of Commerce. But the Eagan House district has swung back and forth over the last few elections, and her opponent, community activist Jen Wilson, will see funds flood into her race from outside groups this fall.","rowNumber":12},{"district":"12A","pvi":7.143330362,"lean2012":-1.2,"leanpres":5.39,"type":"watch","candidater":"Jeff Backer","candidated":"Jay McNamar","candidatei":"","incumbentparty":"D","description":"Former Elbow Lake Mayor Jay McNamar’s victory was one of the noteworthy pickups for Democrats in the 2012 election: He won by about 1 point in a west central Minnesota House district that most expected to swing Republican. But that year a strong Independence Party candidate, Dave Holman, earned more than 6 percent of the vote. There’s no IP candidate this year, and Republicans see the race as one of their most likely pick-ups in the battle to regain the House. They’ve recruited businessman and Browns Valley School Board member Jeff Backer, who also served as Browns Valley mayor and four years on the city council.","rowNumber":13},{"district":"56B","pvi":5.670417123,"lean2012":-0.8,"leanpres":-0.29,"type":"watch","candidater":"Roz Peterson","candidated":"Will Morgan","candidatei":"","incumbentparty":"D","description":"All eyes are on Burnsville. That’s where one of the most competitive races in the fight for the House is shaping up, and, depending on which way it goes, could spell doom or glory for Democrats. For starters, House District 56B is a classic swing district — it has flipped back and forth from Republican to Democratic control for the last three election cycles — and both candidates seeking to represent it have strong backgrounds. This year’s race is a rematch from 2012 between incumbent DFL Rep. Will Morgan, a high-school physics teacher, and Republican Roz Peterson, a Lakeville School Board member and former chair of the Dakota County Regional Chamber of Commerce. If the Democrats maintain control of this seat, expect them to hold on to other close swing seats across the state as well.","rowNumber":14},{"district":"14B","pvi":-12.61853235,"lean2012":-12.73,"leanpres":-9.66,"type":"watch","candidater":"Jim Knoblach","candidated":"Zachary Dorholt","candidatei":"","incumbentparty":"D","description":"The St. Cloud area House district represented by freshman DFL Rep. Zachary Dorholt may lean Democratic, but he’s facing a challenge this fall from a former six-term state representative with broader name recognition and a deeper campaign war chest. Republican Jim Knoblach, who has stayed active in local Republican politics since he left the House in 2006, has opted to forgo the public-subsidy agreement signed by most legislative candidates. That means he wont be restricted by any campaign spending limits, and he’s already raised considerably more than Dorholt in the race. The district was a key battleground in 2012, when Dorholt won the seat from St. Cloud State University economics professor King Banaian. Pundits expect Knoblach to make the race competitive again this cycle.","rowNumber":15},{"district":"5B","pvi":-4.249005146,"lean2012":-6.96,"leanpres":-0.89,"type":"radar","candidater":"Justin Eichorn","candidated":"Tom Anzelc","candidatei":"","incumbentparty":"D","description":"DFL Rep. Tom Anzelc, a fiery economic populist, has been in politics or state government in some form or another since Rudy Perpich was governor in the 1980s. He’s proven a tough candidate to beat over the years, but his district picked up new conservative territory after redistricting, and Republicans are targeting the area after Republican Mitt Romney performed better than President Barack Obama in 2012.","rowNumber":16},{"district":"10A","pvi":-14.12174276,"lean2012":-14.1,"leanpres":12.74,"type":"radar","candidater":"John Ward ","candidated":"Joshua Heintzeman","candidatei":"","incumbentparty":"D","description":"Incumbent Rep. John Ward enjoys fairly broad popularity in his conservative leaning district, despite the fact that he’s a Democrat. He was re-elected in his Crow Wing County district by about 7 percent of the vote in 2012, despite the fact that Romney trounced Obama in the district. But Republicans are trying to use the unpopular construction of the state Senate office building as a wedge in the district, claiming Ward was the deciding vote in favor of the project on the House Rules Committee last year. That’s put it on our radar to watch this cycle.","rowNumber":17},{"district":"36A","pvi":-6.1949472,"lean2012":2.17,"leanpres":0.89,"type":"radar","candidater":"Mark W. Uglem","candidated":"Jefferson Fietek","candidatei":"","incumbentparty":"R","description":"Republican Rep. Mark Uglem won his Champlin-area House seat with a razor-thin margin in 2012, making him one of Democrats’ top pick up seats this election cycle. He’s being challenged by DFL-endorsed candidate Jefferson Fietek, a teacher in the Anoka-Hennepin school district who was an outspoken advocate for gay students during the bullying controversy in 2010.","rowNumber":18},{"district":"42A","pvi":-5.212494668,"lean2012":-6.74,"leanpres":-4.96,"type":"radar","candidater":"Randy Jessup","candidated":"Barb Yarusso","candidatei":"","incumbentparty":"D","description":"Freshman DFL Rep. Barb Yarusso, a teacher from Shoreview, comfortably won her first term in the House in 2012, but the district still retains some of the conservative turf it held before redistricting, making it a target for some GOP groups this election cycle. Her opponent, Republican Randy Jessup, also lives in Shoreview and owns four UPS stores in the Twin Cities.","rowNumber":19},{"district":"44B","pvi":-5.691491551,"lean2012":-11.79,"leanpres":-10.06,"type":"radar","candidater":"Jon Applebaum","candidated":"Ryan Rutzick","candidatei":"","incumbentparty":"","description":"House District 44B, covering the wealthy western ‘burbs like Minnetonka and Plymouth, is a place where a moderate Democrat can thrive. Even-keeled DFL Rep. John Benson represented the area for eight years in the state House, but his retirement has put control of the district in doubt for some. DFLer Jon Applebaum, an attorney from Minnetonka, survived a three-way primary in August to be the nominee this cycle. Republicans are hoping to see Minnetonka resident and small-business owner Ryan Rutzick in the Legislature next year.","rowNumber":20},{"district":"60B","pvi":4.5,"lean2012":1.2,"leanpres":2.3,"type":"unwatch","candidater":"Tester Test","candidated":"Tester McTest","candidatei":"","incumbentparty":"D","description":"This is a test!!!!","rowNumber":21}]}';});
 
 /**
  * Main application file for: minnpost-hot-house-districts-2014
@@ -39088,13 +40703,13 @@ define('text!../data/districts.json',[],function () { return '{"Hot House Distri
 
 // Create main application
 define('minnpost-hot-house-districts-2014', [
-  'jquery', 'underscore', 'ractive', 'ractive-events-tap', 'leaflet', 'chroma',
+  'jquery', 'underscore', 'backbone', 'ractive', 'ractive-events-tap', 'leaflet', 'chroma',
   'mpConfig', 'mpFormatters', 'mpMaps', 'mpNav',
   'helpers',
   'text!templates/application.mustache',
   'text!../data/districts.json'
 ], function(
-  $, _, Ractive, RactiveEventsTap, L, chroma,
+  $, _, Backbone, Ractive, RactiveEventsTap, L, chroma,
   mpConfig, mpFormatters, mpMaps, mpNav,
   helpers,
   tApplication,
@@ -39118,12 +40733,16 @@ define('minnpost-hot-house-districts-2014', [
       var thisApp = this;
       var prop;
 
+      // Create router and routes
+      this.router = new Backbone.Router();
+      this.router.route('district/:district', _.bind(this.routeDistrict, this));
+
       // Color range
       this.cRange = chroma.scale([
         mpConfig['colors-political'].d,
         '#FFFFFF',
         mpConfig['colors-political'].r
-      ]).mode('hsl').domain([-15, 15], 18);
+      ]).mode('hsl').domain([-10, 10]);
 
       // Transform our data.  The data comes in with a keyed object with
       // the title of the spreadsheet and we don't want to maintain it.
@@ -39137,13 +40756,14 @@ define('minnpost-hot-house-districts-2014', [
       this.districts = _.map(this.districts, function(d, di) {
         d.pvi = (d.pvi) ? parseFloat(d.pvi) : 0;
         d.lean = (d.lean2012) ? parseFloat(d.lean2012) : 0;
+        d.lean = (d.leanpres) ? parseFloat(d.leanpres) : 0;
         d.pviColor = thisApp.cRange(d.pvi);
         d.pviFGColor = (chroma(d.pviColor).luminance() < 0.5) ? '#FFFFFF' : '#282828';
         return d;
       });
       // Sort
       this.districts = _.sortBy(this.districts, function(d, di) {
-        return ((d.type === 'watch') ?  -9999 : ((d.type === 'radar') ? 0 : 9999)) + d.pvi;
+        return ((d.type === 'watch') ?  -9999 : ((d.type === 'radar') ? 0 : 9999)) + parseInt(d.district, 10);
       });
       // Group
       this.districts = _.groupBy(this.districts, 'type');
@@ -39171,25 +40791,6 @@ define('minnpost-hot-house-districts-2014', [
         }
       });
 
-      // Delay to ensure that the DOM from the view is totally loaded
-      _.delay(function() {
-        // Scroll spy
-        thisApp.$el.mpScrollSpy({
-          offset: thisApp.$('.districts-nav').height() + 30,
-          throttle: 50
-        });
-        // Stick the navigation
-        thisApp.$('.districts-nav').mpStick({
-          container: thisApp.$('.districts-nav').parent(),
-          throttle: 50
-        });
-      }, 1000);
-
-      // Events
-      this.mainView.on('selectDistrict', function(e) {
-        e.original.preventDefault();
-      });
-
       // Attach boundary outline to each district
       this.mainView.observe('districts.*.*', function(n, o, keypath) {
         var thisView = this;
@@ -39204,6 +40805,46 @@ define('minnpost-hot-house-districts-2014', [
             });
         }
       });
+
+      // Observe has a dom deferal
+      this.mainView.observe('districts', function(n, o) {
+        if (!_.isUndefined(n)) {
+          thisApp.domReady();
+        }
+      }, { defer: true });
+    },
+
+    // Dom is loaded (I think)
+    domReady: function() {
+      var thisApp = this;
+
+      if (this.isDomReady === true) {
+        return;
+      }
+
+      // Scroll spy
+      this.spy = this.$el.mpScrollSpy({
+        offset: this.$('.districts-nav').height() + ($(window).height() / 12),
+        throttle: 50,
+        gotoEvent: false,
+        gotoPreventDefault: false,
+        gotoSpeed: 1000
+      });
+      // Stick the navigation
+      this.$('.districts-nav').mpStick({
+        container: thisApp.$('.districts-nav').parent(),
+        throttle: 50
+      });
+
+      // Start routing
+      Backbone.history.start();
+
+      this.isDomReady = true;
+    },
+
+    // Handle going to specific district
+    routeDistrict: function(district) {
+      this.spy.data('mpScrollSpy').goto(district);
     },
 
     // Ractive decorator for making a map
@@ -39234,7 +40875,7 @@ define('minnpost-hot-house-districts-2014', [
     // Percentage towards
     percentTowards: function(v, start, end) {
       var p = (v - start) / (end - start);
-      return Math.min(Math.max(p * 100, 0), 100);
+      return Math.min(Math.max(p * 100, 0), 97);
     },
 
 
@@ -39285,7 +40926,7 @@ define('minnpost-hot-house-districts-2014', [
         // the CSS has been applied
         _.delay(_.bind(function() {
           this.start();
-        }, this), 500);
+        }, this), 1000);
       });
     },
 
