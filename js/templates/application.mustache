@@ -10,9 +10,9 @@
           </li>
 
           {{#this:di}}
-            <li class="nav-item"><a href="#"
+            <li class="nav-item"><a href="#district/{{ district }}"
               style=""
-              data-spy-on="district-{{ district }}"
+              data-spy-on="{{ district }}"
               on-tap="selectDistrict:{{ district }}">
               {{ district }}
             </a></li>
@@ -26,7 +26,7 @@
         <h2>{{ typeNames[gi] }}</h2>
 
         {{#this:di}}
-          <div class="district" data-spy-me="district-{{ district }}">
+          <div class="district" data-spy-me="{{ district }}" id="{{ district }}">
             <h3>
               District {{ district }}
             </h3>

@@ -7,13 +7,13 @@
 
 // Create main application
 define('minnpost-hot-house-districts-2014', [
-  'jquery', 'underscore', 'ractive', 'ractive-events-tap', 'leaflet', 'chroma',
+  'jquery', 'underscore', 'backbone', 'ractive', 'ractive-events-tap', 'leaflet', 'chroma',
   'mpConfig', 'mpFormatters', 'mpMaps', 'mpNav',
   'helpers',
   'text!templates/application.mustache',
   'text!../data/districts.json'
 ], function(
-  $, _, Ractive, RactiveEventsTap, L, chroma,
+  $, _, Backbone, Ractive, RactiveEventsTap, L, chroma,
   mpConfig, mpFormatters, mpMaps, mpNav,
   helpers,
   tApplication,
@@ -36,6 +36,10 @@ define('minnpost-hot-house-districts-2014', [
     start: function() {
       var thisApp = this;
       var prop;
+
+      // Create router and routes
+      this.router = new Backbone.Router();
+      this.router.route('district/:district', _.bind(this.routeDistrict, this));
 
       // Color range
       this.cRange = chroma.scale([
@@ -91,23 +95,17 @@ define('minnpost-hot-house-districts-2014', [
         }
       });
 
-      // Delay to ensure that the DOM from the view is totally loaded
-      _.delay(function() {
-        // Scroll spy
-        thisApp.$el.mpScrollSpy({
-          offset: thisApp.$('.districts-nav').height() + ($(window).height() / 12),
-          throttle: 50
-        });
-        // Stick the navigation
-        thisApp.$('.districts-nav').mpStick({
-          container: thisApp.$('.districts-nav').parent(),
-          throttle: 50
-        });
-      }, 1000);
-
-      // Events
-      this.mainView.on('selectDistrict', function(e) {
-        e.original.preventDefault();
+      // Scroll spy
+      thisApp.spy = thisApp.$el.mpScrollSpy({
+        offset: thisApp.$('.districts-nav').height() + ($(window).height() / 12),
+        throttle: 50,
+        gotoEvent: false,
+        gotoPreventDefault: false
+      });
+      // Stick the navigation
+      thisApp.$('.districts-nav').mpStick({
+        container: thisApp.$('.districts-nav').parent(),
+        throttle: 50
       });
 
       // Attach boundary outline to each district
@@ -124,6 +122,14 @@ define('minnpost-hot-house-districts-2014', [
             });
         }
       });
+
+      // Start routing
+      Backbone.history.start();
+    },
+
+    // Handle going to specific district
+    routeDistrict: function(district) {
+      this.spy.data('mpScrollSpy').goto(district);
     },
 
     // Ractive decorator for making a map
@@ -154,7 +160,7 @@ define('minnpost-hot-house-districts-2014', [
     // Percentage towards
     percentTowards: function(v, start, end) {
       var p = (v - start) / (end - start);
-      return Math.min(Math.max(p * 100, 0), 100);
+      return Math.min(Math.max(p * 100, 0), 97.5);
     },
 
 

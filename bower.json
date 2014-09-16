@@ -23,7 +23,8 @@
     "underscore": "~1.7.0",
     "jquery": "~1.11.1",
     "minnpost-styles": "master",
-    "chroma-js": "~0.5.8"
+    "chroma-js": "~0.5.8",
+    "backbone": "~1.1.2"
   },
   "dependencyMap": {
     "requirejs": {
@@ -58,6 +59,13 @@
       ],
       "returns": "_"
     },
+    "backbone": {
+      "rname": "backbone",
+      "js": [
+        "backbone/backbone"
+      ],
+      "returns": "Backbone"
+    },
     "ractive": {
       "rname": "ractive",
       "js": [
@@ -78,7 +86,7 @@
         "leaflet/dist/leaflet-src"
       ],
       "css": [
-        "leaflet/dist/leaflet"
+        "//api.tiles.mapbox.com/mapbox.js/v2.1.0/mapbox.css"
       ],
       "images": [
         "leaflet/dist/images"

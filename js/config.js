@@ -22,6 +22,7 @@ require.config({
     'text': '../bower_components/text/text',
     'jquery': '../bower_components/jquery/dist/jquery',
     'underscore': '../bower_components/underscore/underscore',
+    'backbone': '../bower_components/backbone/backbone',
     'ractive': '../bower_components/ractive/ractive-legacy',
     'ractive-events-tap': '../bower_components/ractive-events-tap/ractive-events-tap',
     'leaflet': '../bower_components/leaflet/dist/leaflet-src',
