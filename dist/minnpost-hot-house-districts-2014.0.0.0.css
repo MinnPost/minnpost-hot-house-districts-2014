@@ -2125,6 +2125,17 @@ body .node-unpublished {
   background-repeat: no-repeat;
 }
 
+.mp .minnpost-hot-house-districts-2014-container {
+  /*
+  $responsive-points: (
+    ("all", 0px),
+    ("small", 420px),
+    ("medium", 640px),
+    ("large", 960px),
+    ("xlarge", 1200px)
+  ) !default;
+  */
+}
 .mp .minnpost-hot-house-districts-2014-container .application-container {
   padding-top: 3em;
 }
@@ -2214,11 +2225,14 @@ body .node-unpublished {
   text-align: center;
 }
 .mp .minnpost-hot-house-districts-2014-container .districts .district .details .chart-container {
-  margin-bottom: 1em;
+  margin-bottom: 2em;
 }
 .mp .minnpost-hot-house-districts-2014-container .districts .district .details .chart-container .component-label {
   font-family: "Montserrat", Georgia, "Times New Roman", Times, sans-serif;
   margin-bottom: 0.25em;
+  font-weight: normal;
+  font-size: 0.85em;
+  line-height: 1.15em;
 }
 .mp .minnpost-hot-house-districts-2014-container .districts .district .details .chart-container .chart-canvas {
   position: relative;
@@ -2274,4 +2288,44 @@ body .node-unpublished {
 .mp .minnpost-hot-house-districts-2014-container .districts .description-container,
 .mp .minnpost-hot-house-districts-2014-container .districts .details-container {
   padding-right: 1em;
+}
+@media screen and (max-width: 960px) {
+  .mp .minnpost-hot-house-districts-2014-container .details-container {
+    padding-right: 0;
+  }
+  .mp .minnpost-hot-house-districts-2014-container .description,
+  .mp .minnpost-hot-house-districts-2014-container .details {
+    margin-bottom: 2em;
+  }
+  .mp .minnpost-hot-house-districts-2014-container .district {
+    margin-bottom: 3em;
+  }
+}
+@media screen and (max-width: 825px) {
+  .mp .minnpost-hot-house-districts-2014-container .districts-nav {
+    margin-bottom: 1em;
+  }
+  .mp .minnpost-hot-house-districts-2014-container .districts-nav ul {
+    margin: 0;
+    padding: 0 5px;
+  }
+  .mp .minnpost-hot-house-districts-2014-container .districts-nav ul li.nav-group-label {
+    display: none;
+  }
+  .mp .minnpost-hot-house-districts-2014-container .districts-nav ul li a {
+    margin: 0;
+  }
+}
+@media screen and (max-width: 640px) {
+  .mp .minnpost-hot-house-districts-2014-container .row {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .mp .minnpost-hot-house-districts-2014-container .description-container,
+  .mp .minnpost-hot-house-districts-2014-container .details-container {
+    padding-right: 0;
+  }
+  .mp .minnpost-hot-house-districts-2014-container .districts .district {
+    margin-bottom: 4em;
+  }
 }
