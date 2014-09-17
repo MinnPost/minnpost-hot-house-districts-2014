@@ -69,9 +69,7 @@ define('minnpost-hot-house-districts-2014', [
       this.districts = _.sortBy(this.districts, function(d, di) {
         return ((d.type === 'watch') ?  -9999 : ((d.type === 'radar') ? 0 : 9999)) + parseInt(d.district, 10);
       });
-      // Group
-      this.districts = _.groupBy(this.districts, 'type');
-
+      
       // Create main application view
       this.mainView = new Ractive({
         el: this.$el,
@@ -110,7 +108,7 @@ define('minnpost-hot-house-districts-2014', [
         }
       });
 
-      // Observe has a dom deferal
+      // Observe has a dom deferal, though I am not sure it actually works
       this.mainView.observe('districts', function(n, o) {
         if (!_.isUndefined(n)) {
           thisApp.domReady();
@@ -128,7 +126,7 @@ define('minnpost-hot-house-districts-2014', [
 
       // Scroll spy
       this.spy = this.$el.mpScrollSpy({
-        offset: this.$('.districts-nav').height() + ($(window).height() / 12),
+        offset: Math.max(this.$('.districts-nav').height(), 100) + ($(window).height() / 12),
         throttle: 50,
         gotoEvent: false,
         gotoPreventDefault: false,
@@ -146,9 +144,12 @@ define('minnpost-hot-house-districts-2014', [
       this.isDomReady = true;
     },
 
-    // Handle going to specific district
+    // Handle going to specific district.
     routeDistrict: function(district) {
-      this.spy.data('mpScrollSpy').goto(district);
+      if (this.$('[data-spy-me="' + district + '"]').length > 0) {
+        this.spy.data('mpScrollSpy').goto(district);
+      }
+      //this.$element.find('[data-spy-me="' + target + '"]');
     },
 
     // Ractive decorator for making a map

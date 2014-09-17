@@ -11,116 +11,116 @@
     <div class="districts-nav cf">
       <ul class="cf">
         {{#districts:gi}}
-          <li class="nav-group-label group-{{ gi }}">
-            {{ typeNames[gi] }}
-          </li>
+          {{#(gi === 0 || districts[gi - 1].type !== this.type)}}
+            <li class="nav-group-label group-{{ type }}">
+              {{ typeNames[type] }}
+            </li>
+          {{/()}}
 
-          {{#this:di}}
-            <li class="nav-item"><a href="#district/{{ district }}"
-              style=""
-              data-spy-on="{{ district }}"
-              on-tap="selectDistrict:{{ district }}">
-              {{ district }}
-            </a></li>
-          {{/this}}
+          <li class="nav-item"><a href="#district/{{ district }}"
+            style=""
+            data-spy-on="{{ district }}"
+            on-tap="selectDistrict:{{ district }}">
+            {{ district }}
+          </a></li>
         {{/districts}}
       </ul>
     </div>
 
     <div class="districts">
       {{#districts:gi}}
-        <h2>{{ typeNames[gi] }}</h2>
+        {{#(gi === 0 || districts[gi - 1].type !== this.type)}}
+          <h2>{{ typeNames[type] }}</h2>
+        {{/()}}
 
-        {{#this:di}}
-          <div class="district" data-spy-me="{{ district }}" id="{{ district }}">
-            <h3>
-              District {{ district }}
-            </h3>
+        <div class="district" data-spy-me="{{ district }}" id="{{ district }}">
+          <h3>
+            District {{ district }}
+          </h3>
 
-            <div class="candidates">
-              <span class="{{#incumbentparty}}incumbent-candidate{{/incumbentparty}}">
-                {{ (incumbentparty === 'R') ? candidater : candidated }}
-              </span>
-              <span class="label bg-color-political-{{ (incumbentparty === 'R') ? 'r' : 'dfl' }}">{{ (incumbentparty === 'R') ? 'R' : 'DFL' }}</span>
-              <span class="vs">vs.</span>
-              {{ (incumbentparty === 'R') ? candidated : candidater }}
-              <span class="label bg-color-political-{{ (incumbentparty === 'R') ? 'dfl' : 'r' }}">{{ (incumbentparty === 'R') ? 'DFL' : 'R' }}</span>
+          <div class="candidates">
+            <span class="{{#incumbentparty}}incumbent-candidate{{/incumbentparty}}">
+              {{ (incumbentparty === 'R') ? candidater : candidated }}
+            </span>
+            <span class="label bg-color-political-{{ (incumbentparty === 'R') ? 'r' : 'dfl' }}">{{ (incumbentparty === 'R') ? 'R' : 'DFL' }}</span>
+            <span class="vs">vs.</span>
+            {{ (incumbentparty === 'R') ? candidated : candidater }}
+            <span class="label bg-color-political-{{ (incumbentparty === 'R') ? 'dfl' : 'r' }}">{{ (incumbentparty === 'R') ? 'DFL' : 'R' }}</span>
+          </div>
+
+          <div class="row">
+            <div class="column-medium-50 column-large-50 description">
+              <div class="description-container">
+                {{{ description }}}
+              </div>
             </div>
 
-            <div class="row">
-              <div class="column-medium-50 column-large-50 description">
-                <div class="description-container">
-                  {{{ description }}}
+            <div class="column-medium-50 column-large-25 details">
+              <div class="details-container">
+
+                <div class="chart-container">
+                  <div class="component-label">Average lean</div>
+                  <div class="chart-canvas">
+                    <div class="label-d">D</div>
+                    <div class="chart"
+                      title="PVI Lean: {{ pvi < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(pvi), 2) }}">
+                      <div class="mid-tick"></div>
+                      <div class="tick"
+                        style="background-color: {{ pviColor.hex() }}; left: {{ pT(pvi, -10, 10) }}%;">
+                      </div>
+                    </div>
+                    <div class="label-r">R</div>
+                  </div>
                 </div>
-              </div>
 
-              <div class="column-medium-50 column-large-25 details">
-                <div class="details-container">
-
-                  <div class="chart-container">
-                    <div class="component-label">Average lean</div>
-                    <div class="chart-canvas">
-                      <div class="label-d">D</div>
-                      <div class="chart"
-                        title="PVI Lean: {{ pvi < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(pvi), 2) }}">
-                        <div class="mid-tick"></div>
-                        <div class="tick"
-                          style="background-color: {{ pviColor.hex() }}; left: {{ pT(pvi, -10, 10) }}%;">
-                        </div>
+                <div class="chart-container">
+                  <div class="component-label">2012 MN House margin of victory</div>
+                  <div class="chart-canvas">
+                    <div class="label-d">D</div>
+                    <div class="chart"
+                      title="2012 margin: {{ lean2012 < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(lean2012), 2) }}">
+                      <div class="mid-tick"></div>
+                      <div class="tick"
+                        style="background-color: {{ cR(lean2012).hex() }}; left: {{ pT(lean2012, -10, 10) }}%;">
                       </div>
-                      <div class="label-r">R</div>
                     </div>
+                    <div class="label-r">R</div>
                   </div>
+                </div>
 
-                  <div class="chart-container">
-                    <div class="component-label">2012 MN House margin of victory</div>
-                    <div class="chart-canvas">
-                      <div class="label-d">D</div>
-                      <div class="chart"
-                        title="2012 margin: {{ lean2012 < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(lean2012), 2) }}">
-                        <div class="mid-tick"></div>
-                        <div class="tick"
-                          style="background-color: {{ cR(lean2012).hex() }}; left: {{ pT(lean2012, -10, 10) }}%;">
-                        </div>
+                <div class="chart-container">
+                  <div class="component-label">2012 Presidential margin of victory</div>
+                  <div class="chart-canvas">
+                    <div class="label-d">D</div>
+                    <div class="chart"
+                      title="2012 Presidential lean: {{ leanpres < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(leanpres), 2) }}">
+                      <div class="mid-tick"></div>
+                      <div class="tick"
+                        style="background-color: {{ cR(leanpres).hex() }}; left: {{ pT(leanpres, -10, 10) }}%;">
                       </div>
-                      <div class="label-r">R</div>
                     </div>
-                  </div>
-
-                  <div class="chart-container">
-                    <div class="component-label">2012 Presidential margin of victory</div>
-                    <div class="chart-canvas">
-                      <div class="label-d">D</div>
-                      <div class="chart"
-                        title="2012 Presidential lean: {{ leanpres < 0 ? 'DFL' : 'R' }} {{ f.number(Math.abs(leanpres), 2) }}">
-                        <div class="mid-tick"></div>
-                        <div class="tick"
-                          style="background-color: {{ cR(leanpres).hex() }}; left: {{ pT(leanpres, -10, 10) }}%;">
-                        </div>
-                      </div>
-                      <div class="label-r">R</div>
-                    </div>
+                    <div class="label-r">R</div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div class="column-medium-100 column-large-25">
-                <div class="map-container">
-                  {{^boundary.simple_shape}}
-                    <div class="district-map">
-                      <div class="loading-block"></div>
-                    </div>
-                  {{/boundary.simple_shape}}
-                  {{#boundary.simple_shape}}
-                    <div class="district-map"
-                      id="district-map-{{ district }}"
-                      decorator="map:{{ this }}">
-                    </div>
-                  {{/boundary.simple_shape}}
-                </div>
+            <div class="column-medium-100 column-large-25">
+              <div class="map-container">
+                {{^boundary.simple_shape}}
+                  <div class="district-map">
+                    <div class="loading-block"></div>
+                  </div>
+                {{/boundary.simple_shape}}
+                {{#boundary.simple_shape}}
+                  <div class="district-map"
+                    id="district-map-{{ district }}"
+                    decorator="map:{{ this }}">
+                  </div>
+                {{/boundary.simple_shape}}
               </div>
-          </div>
-        {{/this}}
+            </div>
+        </div>
       {{/districts}}
     </div>
   </div>
