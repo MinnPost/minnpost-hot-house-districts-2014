@@ -192,7 +192,7 @@ define('minnpost-hot-house-districts-2014', [
       this.districts = _.sortBy(this.districts, function(d, di) {
         return ((d.type === 'watch') ?  -9999 : ((d.type === 'radar') ? 0 : 9999)) + parseInt(d.district, 10);
       });
-      
+
       // Create main application view
       this.mainView = new Ractive({
         el: this.$el,
@@ -217,7 +217,7 @@ define('minnpost-hot-house-districts-2014', [
       });
 
       // Attach boundary outline to each district
-      this.mainView.observe('districts.*.*', function(n, o, keypath) {
+      this.mainView.observe('districts.*', function(n, o, keypath) {
         var thisView = this;
         var current = this.get(keypath + '.boundary');
 
