@@ -67,7 +67,10 @@ define('minnpost-hot-house-districts-2014', [
       });
       // Sort
       this.districts = _.sortBy(this.districts, function(d, di) {
-        return ((d.type === 'watch') ?  -9999 : ((d.type === 'radar') ? 0 : 9999)) + parseInt(d.district, 10);
+        return 0 +
+          ((d.type === 'watch') ?  -9000 : ((d.type === 'radar') ? 0 : 9000)) +
+          (d.current === 'D' ? -100 : 100) +
+          parseInt(d.district, 10);
       });
 
       // Create main application view

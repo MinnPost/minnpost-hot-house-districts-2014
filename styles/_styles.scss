@@ -59,10 +59,18 @@ body .node-unpublished {
 
         a {
           display: block;
-          color: #282828;
+          color: $color-dark-gray;
           padding: 0.25em 0.5em;
           margin: 0 5px 5px 0;
           border: 1px solid #FFFFFF;
+
+          &.bg-color-political-dfl,
+          &.bg-color-political-d {
+            background-color: lighten(nth(nth($colors-political, 1), 2), 50);
+          }
+          &.bg-color-political-r {
+            background-color: lighten(nth(nth($colors-political, 3), 2), 50);
+          }
 
           &.active {
             font-weight: bold;
@@ -85,6 +93,11 @@ body .node-unpublished {
 
       h3 {
         margin-bottom: 0.15em;
+
+        .label {
+          vertical-align: middle;
+          margin-left: 0.5em;
+        }
       }
 
       .district-map {
@@ -108,6 +121,10 @@ body .node-unpublished {
         margin-bottom: 1em;
         font-size: 1.25em;
 
+        .party {
+          padding-left: 0.25em;
+        }
+
         .incumbent-candidate {
           font-weight: bold;
         }
@@ -120,6 +137,10 @@ body .node-unpublished {
 
       .details {
         text-align: center;
+
+        .current {
+          margin-bottom: 1em;
+        }
 
         .chart-container {
           margin-bottom: 2em;

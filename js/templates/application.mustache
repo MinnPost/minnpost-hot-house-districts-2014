@@ -18,7 +18,7 @@
           {{/()}}
 
           <li class="nav-item"><a href="#district/{{ district }}"
-            style=""
+            class="bg-color-political-{{ current.toLowerCase() }}"
             data-spy-on="{{ district }}"
             on-tap="selectDistrict:{{ district }}">
             {{ district }}
@@ -42,10 +42,10 @@
             <span class="{{#incumbentparty}}incumbent-candidate{{/incumbentparty}}">
               {{ (incumbentparty === 'R') ? candidater : candidated }}
             </span>
-            <span class="label bg-color-political-{{ (incumbentparty === 'R') ? 'r' : 'dfl' }}">{{ (incumbentparty === 'R') ? 'R' : 'DFL' }}</span>
+            <span class="party color-political-{{ (incumbentparty === 'R') ? 'r' : 'dfl' }}">{{ (incumbentparty === 'R') ? 'R' : 'DFL' }}</span>
             <span class="vs">vs.</span>
             {{ (incumbentparty === 'R') ? candidated : candidater }}
-            <span class="label bg-color-political-{{ (incumbentparty === 'R') ? 'dfl' : 'r' }}">{{ (incumbentparty === 'R') ? 'DFL' : 'R' }}</span>
+            <span class="party color-political-{{ (incumbentparty === 'R') ? 'dfl' : 'r' }}">{{ (incumbentparty === 'R') ? 'DFL' : 'R' }}</span>
           </div>
 
           <div class="row">
@@ -57,6 +57,13 @@
 
             <div class="column-medium-50 column-large-25 details">
               <div class="details-container">
+
+                <div class="current large">
+                  <div class="">
+                    Currently held by:&nbsp;
+                    <span class="label bg-color-political-{{ current.toLowerCase() }}">{{ current === 'D' ? 'DFL' : current }}</span>
+                  </div>
+                </div>
 
                 <div class="chart-container">
                   <div class="component-label">Average lean</div>
