@@ -167,7 +167,7 @@ define('minnpost-hot-house-districts-2014', [
         style: mpMaps.mapStyle
       }).addTo(map);
       map.fitBounds(layer.getBounds(), {
-        padding: [25, 25]
+        padding: [65, 65]
       });
       map.invalidateSize();
 
