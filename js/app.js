@@ -49,7 +49,10 @@ define('minnpost-hot-house-districts-2014', [
       ]).mode('hsl').domain([-10, 10]);
 
       // Transform our data.  The data comes in with a keyed object with
-      // the title of the spreadsheet and we don't want to maintain it.
+      // the title of the spreadsheet and a keyed object if there are multiple
+      // sheets.
+      // { 'title': [ .. ] }
+      // { 'title': { 'sheet1': [ .. ], 'sheet2': [ .. ] }}
       // Also note that Google Spreadsheets alters column names and removes
       // things like spaces and _
       this.districts = JSON.parse(dDistricts);
@@ -57,6 +60,9 @@ define('minnpost-hot-house-districts-2014', [
         prop = di;
       });
       this.districts = this.districts[prop];
+      if (_.isObject(this.districts) && !_.isArray(this.districts)) {
+        this.districts = _.toArray(this.districts)[0];
+      }
       this.districts = _.map(this.districts, function(d, di) {
         d.pvi = (d.pvi) ? parseFloat(d.pvi) : 0;
         d.lean = (d.lean2012) ? parseFloat(d.lean2012) : 0;
