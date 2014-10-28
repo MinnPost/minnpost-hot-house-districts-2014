@@ -260,14 +260,14 @@ module.exports = function(grunt) {
       },
       cssLibs: {
         options: {
-          banner: ''
+          banner: '/* Lib CSS */'
         },
         src: ['<%= concat.cssLibs.dest %>'],
         dest: 'dist/<%= pkg.name %>.libs.min.css'
       },
       cssIeLibs: {
         options: {
-          banner: ''
+          banner: '/* Lib CSS for IE */'
         },
         src: ['<%= concat.cssIeLibs.dest %>'],
         dest: 'dist/<%= pkg.name %>.libs.min.ie.css'

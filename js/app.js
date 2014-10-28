@@ -208,6 +208,7 @@ define('minnpost-hot-house-districts-2014', [
         build: {
           css: [
             '//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css',
+            '//api.tiles.mapbox.com/mapbox.js/v2.1.0/mapbox.css',
             'dist/minnpost-hot-house-districts-2014.libs.min.css',
             'dist/minnpost-hot-house-districts-2014.latest.min.css'
           ],
@@ -220,7 +221,8 @@ define('minnpost-hot-house-districts-2014', [
         },
         deploy: {
           css: [
-            '//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css',  '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.libs.min.css',  '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.latest.min.css'
+            '//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css',
+            '//api.tiles.mapbox.com/mapbox.js/v2.1.0/mapbox.css', '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.libs.min.css',  '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.latest.min.css'
           ],
           ie: [  '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.libs.min.ie.css',  '//s3.amazonaws.com/data.minnpost/projects/minnpost-hot-house-districts-2014/minnpost-hot-house-districts-2014.latest.min.ie.css'
           ],
