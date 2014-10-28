@@ -1,4 +1,4 @@
-/*! minnpost-hot-house-districts-2014 - v0.0.0 - 2014-10-28
+/*! minnpost-hot-house-districts-2014 - v0.0.1 - 2014-10-28
 * https://github.com/minnpost/minnpost-hot-house-districts-2014
 * Copyright (c) 2014 MinnPost; Licensed MIT */
 
